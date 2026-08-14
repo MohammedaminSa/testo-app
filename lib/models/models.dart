@@ -10,6 +10,19 @@ class Question {
     required this.correctIndex,
     required this.explanation,
   });
+
+  factory Question.fromMap(Map<String, dynamic> map) {
+    final optionRows =
+        ((map['options'] as List?) ?? const []).cast<Map<String, dynamic>>();
+    optionRows
+        .sort((a, b) => (a['position'] as int).compareTo(b['position'] as int));
+    return Question(
+      text: map['text'] as String,
+      options: optionRows.map((o) => o['text'] as String).toList(),
+      correctIndex: optionRows.indexWhere((o) => o['is_correct'] == true),
+      explanation: map['explanation'] as String? ?? '',
+    );
+  }
 }
 
 class Quiz {
@@ -24,6 +37,19 @@ class Quiz {
     required this.description,
     required this.questions,
   });
+
+  factory Quiz.fromMap(Map<String, dynamic> map) {
+    final questionRows =
+        ((map['questions'] as List?) ?? const []).cast<Map<String, dynamic>>();
+    questionRows
+        .sort((a, b) => (a['position'] as int).compareTo(b['position'] as int));
+    return Quiz(
+      id: map['id'] as String,
+      title: map['title'] as String,
+      description: map['description'] as String? ?? '',
+      questions: questionRows.map(Question.fromMap).toList(),
+    );
+  }
 }
 
 class QuizAttempt {
