@@ -5,6 +5,7 @@ import '../core/theme.dart';
 import '../data/demo_quizzes.dart';
 import '../models/models.dart';
 import '../services/progress_service.dart';
+import '../services/quiz_service.dart';
 import 'history_screen.dart';
 import 'quiz_screen.dart';
 
@@ -17,13 +18,48 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _progressService = ProgressService();
+  final _quizService = QuizService();
   bool _loadingStats = true;
   Map<String, dynamic> _stats = {};
+
+  List<Quiz>? _quizzes;
+  bool _loadingQuizzes = true;
+  bool _quizError = false;
 
   @override
   void initState() {
     super.initState();
     _loadStats();
+    _loadQuizzes();
+  }
+
+  Future<void> _loadQuizzes() async {
+    if (!AppConfig.isConfigured) {
+      setState(() {
+        _quizzes = DemoQuizzes.quizzes;
+        _loadingQuizzes = false;
+        _quizError = false;
+      });
+      return;
+    }
+    setState(() => _loadingQuizzes = true);
+    try {
+      final quizzes = await _quizService.fetchQuizzes();
+      if (mounted) {
+        setState(() {
+          _quizzes = quizzes;
+          _loadingQuizzes = false;
+          _quizError = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loadingQuizzes = false;
+          _quizError = true;
+        });
+      }
+    }
   }
 
   Future<void> _loadStats() async {
@@ -136,7 +172,9 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: _loadStats,
+        onRefresh: () async {
+          await Future.wait([_loadStats(), _loadQuizzes()]);
+        },
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -157,7 +195,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            ...DemoQuizzes.quizzes.map(_buildQuizCard),
+            ..._buildQuizCards(),
             const SizedBox(height: 24),
           ],
         ),
@@ -232,6 +270,43 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  List<Widget> _buildQuizCards() {
+    if (_loadingQuizzes) {
+      return const [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 32),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      ];
+    }
+    if (_quizError) {
+      return [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              children: [
+                const Icon(Icons.cloud_off, size: 48, color: Colors.black38),
+                const SizedBox(height: 12),
+                const Text(
+                  'Could not load quizzes.\nCheck your connection and try again.',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton.icon(
+                  onPressed: _loadQuizzes,
+                  icon: const Icon(Icons.refresh),
+                  label: const Text('Retry'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ];
+    }
+    return (_quizzes ?? const <Quiz>[]).map(_buildQuizCard).toList();
   }
 
   Widget _buildQuizCard(Quiz quiz) {
