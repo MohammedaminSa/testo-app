@@ -30,3 +30,57 @@ drop policy if exists "Users insert own attempts" on public.quiz_attempts;
 create policy "Users insert own attempts"
   on public.quiz_attempts for insert
   with check (auth.uid() = user_id);
+
+-- ============================================================================
+-- Quiz content (quizzes, questions, options)
+-- Content is read-only for users; the app fetches it with nested embeds.
+-- ============================================================================
+
+create table if not exists public.quizzes (
+  id text primary key,
+  title text not null,
+  description text not null,
+  created_at timestamptz not null default now()
+);
+
+create table if not exists public.questions (
+  id uuid primary key default gen_random_uuid(),
+  quiz_id text not null references public.quizzes (id) on delete cascade,
+  position integer not null,
+  text text not null,
+  explanation text not null default '',
+  unique (quiz_id, position)
+);
+
+create table if not exists public.options (
+  id uuid primary key default gen_random_uuid(),
+  question_id uuid not null references public.questions (id) on delete cascade,
+  position integer not null,
+  text text not null,
+  is_correct boolean not null default false,
+  unique (question_id, position)
+);
+
+-- Index so nested selects stay fast
+create index if not exists questions_quiz_id_idx on public.questions (quiz_id);
+create index if not exists options_question_id_idx on public.options (question_id);
+
+-- RLS: anyone signed in can read content; only the app owner can write
+alter table public.quizzes enable row level security;
+alter table public.questions enable row level security;
+alter table public.options enable row level security;
+
+drop policy if exists "Quizzes readable by users" on public.quizzes;
+create policy "Quizzes readable by users"
+  on public.quizzes for select
+  using (auth.role() = 'authenticated');
+
+drop policy if exists "Questions readable by users" on public.questions;
+create policy "Questions readable by users"
+  on public.questions for select
+  using (auth.role() = 'authenticated');
+
+drop policy if exists "Options readable by users" on public.options;
+create policy "Options readable by users"
+  on public.options for select
+  using (auth.role() = 'authenticated');
