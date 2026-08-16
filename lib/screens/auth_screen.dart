@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../core/config.dart';
 import '../core/theme.dart';
-import 'forgot_password_screen.dart';
+import '../providers/auth_providers.dart';
+import '../providers/message_controller.dart';
 
-class AuthScreen extends StatefulWidget {
+class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  State<AuthScreen> createState() => _AuthScreenState();
+  ConsumerState<AuthScreen> createState() => _AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class _AuthScreenState extends ConsumerState<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
@@ -37,19 +39,24 @@ class _AuthScreenState extends State<AuthScreen> {
     setState(() => _isLogin = !_isLogin);
   }
 
+  void _showMessage(String message) {
+    ref.read(messageControllerProvider.notifier).show(message);
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
 
+    final auth = ref.read(authRepositoryProvider);
     try {
       if (_isLogin) {
-        await supabase.auth.signInWithPassword(
+        await auth.signInWithPassword(
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
       } else {
-        final response = await supabase.auth.signUp(
+        final response = await auth.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
           data: {
@@ -59,16 +66,16 @@ class _AuthScreenState extends State<AuthScreen> {
         if (response.session == null) {
           // Email confirmation is enabled: the user must verify before
           // signing in, so guide them to their inbox.
-          _showSnackBar(
+          _showMessage(
             'Account created! We sent a confirmation link to '
             '${_emailController.text.trim()}. Verify your email to sign in.',
           );
         }
       }
     } on AuthException catch (e) {
-      _showSnackBar(e.message);
+      _showMessage(e.message);
     } catch (_) {
-      _showSnackBar('Something went wrong. Please try again.');
+      _showMessage('Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -77,22 +84,16 @@ class _AuthScreenState extends State<AuthScreen> {
   Future<void> _signInWithOAuth(OAuthProvider provider) async {
     setState(() => _isLoading = true);
     try {
-      await supabase.auth.signInWithOAuth(provider);
-      // Success is observed via the auth stream in SessionGate, which swaps
-      // to HomeScreen once a session exists.
+      await ref.read(authRepositoryProvider).signInWithOAuth(provider);
+      // Success is observed via the auth stream, which the router's auth
+      // guard uses to redirect to the home screen.
     } on AuthException catch (e) {
-      _showSnackBar(e.message);
+      _showMessage(e.message);
     } catch (_) {
-      _showSnackBar('Could not open the sign-in page.');
+      _showMessage('Could not open the sign-in page.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
-  }
-
-  void _showSnackBar(String message) {
-    if (!mounted) return;
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -231,12 +232,7 @@ class _AuthScreenState extends State<AuthScreen> {
                       child: TextButton(
                         onPressed: _isLoading
                             ? null
-                            : () => Navigator.of(context).push(
-                                  MaterialPageRoute(
-                                    builder: (_) =>
-                                        const ForgotPasswordScreen(),
-                                  ),
-                                ),
+                            : () => context.push('/forgot-password'),
                         child: const Text('Forgot password?'),
                       ),
                     ),

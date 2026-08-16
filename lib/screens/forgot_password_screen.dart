@@ -1,16 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../core/config.dart';
+import '../providers/auth_providers.dart';
+import '../providers/message_controller.dart';
 
-class ForgotPasswordScreen extends StatefulWidget {
+class ForgotPasswordScreen extends ConsumerStatefulWidget {
   const ForgotPasswordScreen({super.key});
 
   @override
-  State<ForgotPasswordScreen> createState() => _ForgotPasswordScreenState();
+  ConsumerState<ForgotPasswordScreen> createState() =>
+      _ForgotPasswordScreenState();
 }
 
-class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
+class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _isLoading = false;
@@ -22,24 +26,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
     super.dispose();
   }
 
+  void _showMessage(String message) {
+    ref.read(messageControllerProvider.notifier).show(message);
+  }
+
   Future<void> _sendResetEmail() async {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
     try {
-      await supabase.auth.resetPasswordForEmail(_emailController.text.trim());
+      await ref
+          .read(authRepositoryProvider)
+          .resetPasswordForEmail(_emailController.text.trim());
       if (mounted) setState(() => _sent = true);
     } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
-      }
+      _showMessage(e.message);
     } catch (_) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Something went wrong. Try again.')),
-        );
-      }
+      _showMessage('Something went wrong. Try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
@@ -126,7 +129,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
         ),
         const SizedBox(height: 24),
         OutlinedButton(
-          onPressed: () => Navigator.of(context).pop(),
+          onPressed: () => context.pop(),
           style: OutlinedButton.styleFrom(
             minimumSize: const Size(double.infinity, 52),
           ),
