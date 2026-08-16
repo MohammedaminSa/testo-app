@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/models.dart';
@@ -8,15 +10,22 @@ class ProgressRepository {
 
   const ProgressRepository(this._client);
 
-  Future<void> saveAttempt(QuizAttempt attempt) async {
-    final user = _client.auth.currentUser;
-    if (user == null) {
-      throw Exception('No authenticated user');
-    }
-    await _client.from('quiz_attempts').insert({
-      'user_id': user.id,
-      ...attempt.toMap(),
-    });
+  /// Submits an attempt to the `grade_attempt` RPC. The server grades the
+  /// answers against the real options, persists the attempt, and returns the
+  /// result (score + per-question correctness) for the review screen.
+  Future<QuizResult> gradeAttempt({
+    required String quizId,
+    required List<SubmittedAnswer> answers,
+  }) async {
+    final data = await _client.rpc(
+      'grade_attempt',
+      params: {
+        'p_quiz_id': quizId,
+        'p_answers': jsonEncode([for (final a in answers) a.toMap()]),
+      },
+    );
+
+    return QuizResult.fromMap(data as Map<String, dynamic>);
   }
 
   Future<List<QuizAttempt>> fetchAttempts({int limit = 100}) async {
