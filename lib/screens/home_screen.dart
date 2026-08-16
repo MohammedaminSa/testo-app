@@ -1,136 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
-import '../core/config.dart';
 import '../core/theme.dart';
-import '../data/demo_quizzes.dart';
 import '../models/models.dart';
-import '../services/progress_service.dart';
-import '../services/quiz_service.dart';
-import 'history_screen.dart';
-import 'profile_screen.dart';
-import 'quiz_screen.dart';
-import 'review_screen.dart';
+import '../providers/progress_providers.dart';
+import '../providers/quiz_providers.dart';
 
-class HomeScreen extends StatefulWidget {
+class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  ConsumerState<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
-  final _progressService = ProgressService();
-  final _quizService = QuizService();
-  bool _loadingStats = true;
-  Map<String, dynamic> _stats = {};
-
-  List<Quiz>? _quizzes;
-  bool _loadingQuizzes = true;
-  bool _quizError = false;
+class _HomeScreenState extends ConsumerState<HomeScreen> {
   String? _difficultyFilter;
 
-  @override
-  void initState() {
-    super.initState();
-    _loadStats();
-    _loadQuizzes();
+  Future<void> _refresh() async {
+    await Future.wait([
+      ref.read(quizListProvider.notifier).refresh(),
+      ref.refresh(attemptsProvider.future),
+    ]);
   }
 
-  Future<void> _loadQuizzes() async {
-    if (!AppConfig.isConfigured) {
-      setState(() {
-        _quizzes = DemoQuizzes.quizzes;
-        _loadingQuizzes = false;
-        _quizError = false;
-      });
-      return;
-    }
-    setState(() => _loadingQuizzes = true);
-    try {
-      final quizzes = await _quizService.fetchQuizzes();
-      if (mounted) {
-        setState(() {
-          _quizzes = quizzes;
-          _loadingQuizzes = false;
-          _quizError = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) {
-        setState(() {
-          _loadingQuizzes = false;
-          _quizError = true;
-        });
-      }
-    }
-  }
-
-  Future<void> _loadStats() async {
-    setState(() => _loadingStats = true);
-    try {
-      final attempts = await _progressService.fetchAttempts();
-      final stats = await _progressService.fetchStats(attempts);
-      if (mounted) {
-        setState(() {
-          _stats = stats;
-          _loadingStats = false;
-        });
-      }
-    } catch (_) {
-      if (mounted) setState(() => _loadingStats = false);
-    }
-  }
-
-  void _openProfile() {
-    Navigator.of(context).push(
-      MaterialPageRoute(builder: (_) => const ProfileScreen()),
-    );
-  }
-
-  void _startQuiz(Quiz quiz) async {
-    final result = await Navigator.of(context).push<QuizResult>(
-      MaterialPageRoute(builder: (_) => QuizScreen(quiz: quiz)),
-    );
-    if (result == null || !mounted) return;
-
-    final attempt = QuizAttempt(
-      quizId: quiz.id,
-      quizTitle: quiz.title,
-      totalQuestions: result.totalQuestions,
-      correctAnswers: result.correctCount,
-      scorePercent: result.scorePercent,
-      questionsOrder: result.questionsOrder,
-      answers: result.answers,
-      completedAt: DateTime.now(),
-    );
-
-    var saved = false;
-    try {
-      await _progressService.saveAttempt(attempt);
-      saved = true;
-    } catch (_) {
-      // Never block the user on a failed save.
-    }
-    _loadStats();
-
-    if (!mounted) return;
-    await Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => ReviewScreen(quiz: quiz, result: result),
-      ),
-    );
-
-    if (!saved && mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Result could not be saved to the cloud yet.'),
-        ),
-      );
-    }
+  void _startQuiz(Quiz quiz) {
+    context.push('/quiz', extra: quiz);
   }
 
   @override
   Widget build(BuildContext context) {
+    final quizzesAsync = ref.watch(quizListProvider);
+    final quizzes = quizzesAsync.value;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Testo'),
@@ -138,23 +40,17 @@ class _HomeScreenState extends State<HomeScreen> {
           IconButton(
             tooltip: 'History',
             icon: const Icon(Icons.history),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const HistoryScreen()),
-              );
-            },
+            onPressed: () => context.push('/history'),
           ),
           IconButton(
             tooltip: 'Profile',
             icon: const Icon(Icons.account_circle_outlined),
-            onPressed: _openProfile,
+            onPressed: () => context.push('/profile'),
           ),
         ],
       ),
       body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.wait([_loadStats(), _loadQuizzes()]);
-        },
+        onRefresh: _refresh,
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
@@ -175,8 +71,8 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
-            if (!_loadingQuizzes && !_quizError) _buildFilterRow(),
-            ..._buildQuizCards(),
+            if (quizzes != null && quizzes.isNotEmpty) _buildFilterRow(quizzes),
+            ..._buildQuizCards(quizzesAsync),
             const SizedBox(height: 24),
           ],
         ),
@@ -185,20 +81,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStatsCard() {
-    if (_loadingStats) {
-      return const Card(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator()),
-        ),
-      );
-    }
+    return ref.watch(statsProvider).when(
+          loading: () => const Card(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator()),
+            ),
+          ),
+          error: (_, _) => const Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Center(
+                child: Text(
+                  'Could not load progress.',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
+            ),
+          ),
+          data: _buildStatsContent,
+        );
+  }
 
-    final avgScore = (_stats['avgScore'] as double?) ?? 0;
-    final bestScore = (_stats['bestScore'] as double?) ?? 0;
-    final attempts = _stats['totalAttempts'] as int? ?? 0;
-    final quizzesTaken = _stats['quizzesTaken'] as int? ?? 0;
-    final weakTopics = (_stats['weakTopics'] as List?) ?? const <String>[];
+  Widget _buildStatsContent(Map<String, dynamic> stats) {
+    final avgScore = (stats['avgScore'] as double?) ?? 0;
+    final bestScore = (stats['bestScore'] as double?) ?? 0;
+    final attempts = stats['totalAttempts'] as int? ?? 0;
+    final quizzesTaken = stats['quizzesTaken'] as int? ?? 0;
+    final weakTopics = (stats['weakTopics'] as List?) ?? const <String>[];
 
     return Card(
       child: Padding(
@@ -277,11 +187,8 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFilterRow() {
-    final difficulties = (_quizzes ?? const <Quiz>[])
-        .map((q) => q.difficulty)
-        .toSet()
-        .toList()
+  Widget _buildFilterRow(List<Quiz> quizzes) {
+    final difficulties = quizzes.map((q) => q.difficulty).toSet().toList()
       ..sort();
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
@@ -307,23 +214,15 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  List<Quiz> get _visibleQuizzes {
-    final all = _quizzes ?? const <Quiz>[];
-    if (_difficultyFilter == null) return all;
-    return all.where((q) => q.difficulty == _difficultyFilter).toList();
-  }
-
-  List<Widget> _buildQuizCards() {
-    if (_loadingQuizzes) {
-      return const [
+  List<Widget> _buildQuizCards(AsyncValue<List<Quiz>> quizzesAsync) {
+    return quizzesAsync.when(
+      loading: () => const [
         Padding(
           padding: EdgeInsets.symmetric(vertical: 32),
           child: Center(child: CircularProgressIndicator()),
         ),
-      ];
-    }
-    if (_quizError) {
-      return [
+      ],
+      error: (_, _) => [
         Card(
           child: Padding(
             padding: const EdgeInsets.all(24),
@@ -337,7 +236,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
                 const SizedBox(height: 12),
                 OutlinedButton.icon(
-                  onPressed: _loadQuizzes,
+                  onPressed: () =>
+                      ref.read(quizListProvider.notifier).refresh(),
                   icon: const Icon(Icons.refresh),
                   label: const Text('Retry'),
                 ),
@@ -345,23 +245,32 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-      ];
-    }
-    final quizzes = _visibleQuizzes;
-    if (quizzes.isEmpty) {
-      return const [
-        Padding(
-          padding: EdgeInsets.symmetric(vertical: 24),
-          child: Center(
-            child: Text(
-              'No quizzes match this filter.',
-              style: TextStyle(color: Colors.black54),
+      ],
+      data: (quizzes) {
+        final visible = _filter(quizzes);
+        if (visible.isEmpty) {
+          return const [
+            Padding(
+              padding: EdgeInsets.symmetric(vertical: 24),
+              child: Center(
+                child: Text(
+                  'No quizzes match this filter.',
+                  style: TextStyle(color: Colors.black54),
+                ),
+              ),
             ),
-          ),
-        ),
-      ];
-    }
-    return quizzes.map(_buildQuizCard).toList();
+          ];
+        }
+        return visible.map(_buildQuizCard).toList();
+      },
+    );
+  }
+
+  List<Quiz> _filter(List<Quiz> quizzes) {
+    if (_difficultyFilter == null) return quizzes;
+    return quizzes
+        .where((q) => q.difficulty == _difficultyFilter)
+        .toList();
   }
 
   Widget _buildQuizCard(Quiz quiz) {
