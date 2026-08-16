@@ -13,14 +13,19 @@ final quizRepositoryProvider = Provider<QuizRepository>(
   (ref) => QuizRepository(ref.watch(supabaseProvider)),
 );
 
+/// Whether the app points at a real Supabase backend. Tests override this to
+/// exercise the network/cache path instead of the demo fallback.
+final backendConfiguredProvider =
+    Provider<bool>((ref) => AppConfig.isConfigured);
+
 /// Loads the quiz catalog. Shows the offline cache instantly when available
 /// and refreshes in the background; falls back to the cache when offline and
 /// rethrows only when there is nothing to show.
 class QuizListNotifier extends AsyncNotifier<List<Quiz>> {
   @override
   Future<List<Quiz>> build() async {
+    if (!ref.read(backendConfiguredProvider)) return DemoQuizzes.quizzes;
     final repo = ref.read(quizRepositoryProvider);
-    if (!AppConfig.isConfigured) return DemoQuizzes.quizzes;
 
     final cached = await ref.read(quizCacheProvider).load();
     if (cached != null && cached.isNotEmpty) {
@@ -38,7 +43,7 @@ class QuizListNotifier extends AsyncNotifier<List<Quiz>> {
   }
 
   Future<void> refresh() async {
-    if (!AppConfig.isConfigured) return;
+    if (!ref.read(backendConfiguredProvider)) return;
     try {
       final quizzes = await _fetch(ref.read(quizRepositoryProvider));
       state = AsyncData(quizzes);
