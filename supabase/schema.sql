@@ -10,6 +10,11 @@ create table if not exists public.quiz_attempts (
   total_questions integer not null,
   correct_answers integer not null,
   score_percent numeric(5,2) not null,
+  -- The randomized "paper" served for this attempt: question ids in the
+  -- order they were presented, plus each question's answer. Stored so the
+  -- review screen can be rebuilt and weak areas tracked fairly.
+  questions_order jsonb not null default '[]'::jsonb,
+  answers jsonb not null default '[]'::jsonb,
   completed_at timestamptz not null default now(),
   created_at timestamptz not null default now()
 );
@@ -40,6 +45,14 @@ create table if not exists public.quizzes (
   id text primary key,
   title text not null,
   description text not null,
+  -- Content metadata for filtering/browsing in the app.
+  category text not null default 'General',
+  difficulty text not null default 'Beginner',
+  tags text[] not null default '{}',
+  -- Optional per-question time limit in seconds (null = untimed).
+  time_limit_seconds integer,
+  -- Optional fixed paper length (null = use all questions).
+  paper_size integer,
   created_at timestamptz not null default now()
 );
 
@@ -49,6 +62,8 @@ create table if not exists public.questions (
   position integer not null,
   text text not null,
   explanation text not null default '',
+  -- Topic used for weak-area tracking (e.g. "Algorithms").
+  topic text not null default 'General',
   unique (quiz_id, position)
 );
 
