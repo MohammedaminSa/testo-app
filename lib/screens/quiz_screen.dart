@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../core/theme.dart';
 import '../models/models.dart';
+import '../services/quiz_storage.dart';
 
 class QuizScreen extends StatefulWidget {
   final Quiz quiz;
@@ -13,13 +16,87 @@ class QuizScreen extends StatefulWidget {
 }
 
 class _QuizScreenState extends State<QuizScreen> {
+  bool _loading = true;
+  late List<Question> _paper;
   int _currentIndex = 0;
   int? _selectedIndex;
   bool _answered = false;
+  bool _finished = false;
   int _correctCount = 0;
+  final List<QuestionAnswer> _answers = [];
 
-  Question get _question => widget.quiz.questions[_currentIndex];
-  bool get _isLast => _currentIndex == widget.quiz.questions.length - 1;
+  Timer? _timer;
+  int? _timeLimitSeconds;
+  int? _secondsLeft;
+
+  Question get _question => _paper[_currentIndex];
+  bool get _isLast => _currentIndex == _paper.length - 1;
+
+  @override
+  void initState() {
+    super.initState();
+    _initialize();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _initialize() async {
+    final saved = await QuizStorage.load(widget.quiz.id);
+    if (saved != null && mounted) {
+      final resume = await _promptResume();
+      if (resume == true) {
+        setState(() {
+          _paper = saved.paper;
+          _currentIndex = saved.currentIndex < saved.paper.length
+              ? saved.currentIndex
+              : saved.paper.length - 1;
+          _answers.addAll(saved.answers);
+          _correctCount = _answers.where((a) => a.isCorrect).length;
+          _timeLimitSeconds = saved.timeLimitSeconds;
+          _loading = false;
+        });
+        _startTimer();
+        return;
+      }
+      await QuizStorage.clear(widget.quiz.id);
+    }
+    _buildPaper();
+    setState(() => _loading = false);
+    _startTimer();
+  }
+
+  void _buildPaper() {
+    final shuffled = [...widget.quiz.questions]..shuffle();
+    final size = widget.quiz.paperSize ?? shuffled.length;
+    _paper = shuffled.take(size.clamp(1, shuffled.length)).toList();
+    _timeLimitSeconds = widget.quiz.timeLimitSeconds;
+  }
+
+  Future<bool?> _promptResume() {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unfinished quiz'),
+        content: const Text(
+          'You have an in-progress attempt. Continue where you left off?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Start over'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Resume'),
+          ),
+        ],
+      ),
+    );
+  }
 
   void _selectOption(int index) {
     if (_answered) return;
@@ -28,11 +105,30 @@ class _QuizScreenState extends State<QuizScreen> {
       _answered = true;
       if (index == _question.correctIndex) _correctCount++;
     });
+    _recordAnswer();
+    _stopTimer();
+    _persist();
+  }
+
+  void _recordAnswer() {
+    final q = _question;
+    final selected = _selectedIndex;
+    _answers.add(QuestionAnswer(
+      questionId: q.id,
+      questionText: q.text,
+      topic: q.topic,
+      selectedIndex: selected,
+      correctIndex: q.correctIndex,
+      selectedText: selected != null ? q.options[selected] : '',
+      correctText: q.options[q.correctIndex],
+      isCorrect: selected != null && selected == q.correctIndex,
+      explanation: q.explanation,
+    ));
   }
 
   void _next() {
     if (_isLast) {
-      Navigator.of(context).pop(_correctCount);
+      _finish();
       return;
     }
     setState(() {
@@ -40,16 +136,103 @@ class _QuizScreenState extends State<QuizScreen> {
       _selectedIndex = null;
       _answered = false;
     });
+    _persist();
+    _startTimer();
   }
+
+  void _finish() {
+    if (_finished) return;
+    _finished = true;
+    _stopTimer();
+    QuizStorage.clear(widget.quiz.id);
+    final result = QuizResult(
+      correctCount: _correctCount,
+      totalQuestions: _paper.length,
+      scorePercent: _paper.isEmpty ? 0 : _correctCount / _paper.length * 100,
+      questionsOrder: _paper.map((q) => q.id).toList(),
+      answers: List.unmodifiable(_answers),
+    );
+    Navigator.of(context).pop(result);
+  }
+
+  // -- Timer (per-question countdown + auto-submit) --------------------------
+
+  void _startTimer() {
+    _stopTimer();
+    if (_timeLimitSeconds == null || _answered) return;
+    _secondsLeft = _timeLimitSeconds;
+    _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted || _answered) {
+        _timer?.cancel();
+        return;
+      }
+      setState(() {
+        _secondsLeft = (_secondsLeft ?? _timeLimitSeconds!) - 1;
+      });
+      if (_secondsLeft! <= 0) {
+        _stopTimer();
+        _onTimeout();
+      }
+    });
+  }
+
+  void _stopTimer() {
+    _timer?.cancel();
+    _timer = null;
+  }
+
+  void _onTimeout() {
+    if (_answered || _finished) return;
+    setState(() {
+      _selectedIndex = null;
+      _answered = true;
+    });
+    _recordAnswer();
+    _next();
+  }
+
+  Future<void> _persist() async {
+    await QuizStorage.save(
+      quizId: widget.quiz.id,
+      paper: _paper,
+      currentIndex: _currentIndex,
+      answers: _answers,
+      timeLimitSeconds: _timeLimitSeconds,
+    );
+  }
+
+  // -- UI --------------------------------------------------------------------
 
   @override
   Widget build(BuildContext context) {
-    final total = widget.quiz.questions.length;
+    if (_loading) {
+      return const Scaffold(
+        body: Center(child: CircularProgressIndicator()),
+      );
+    }
+    final total = _paper.length;
     final progress = (_currentIndex + 1) / total;
 
     return Scaffold(
       appBar: AppBar(
         title: Text('${_currentIndex + 1} of $total'),
+        actions: [
+          if (_timeLimitSeconds != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 16),
+              child: Center(
+                child: Text(
+                  '${_secondsLeft ?? _timeLimitSeconds}s',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: (_secondsLeft ?? _timeLimitSeconds!) <= 5
+                        ? AppTheme.error
+                        : AppTheme.primary,
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       body: Column(
         children: [
