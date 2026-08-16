@@ -6,8 +6,11 @@ A mobile app that helps users prepare for exams and interviews through quizzes, 
 
 ## Tech Stack
 
-- Frontend  Flutter (Dart)
-- Apis Supabase (auth + database)
+- Frontend: Flutter (Dart)
+- APIs: Supabase (auth + database)
+- State management: Riverpod
+- Navigation: go_router (auth guards)
+- Offline: shared_preferences (quiz cache + resume persistence)
 
 ## Setup
 
@@ -56,6 +59,8 @@ Without the dart-defines the app falls back to the bundled demo quizzes so it st
 - Post-quiz review screen with explanations and weak-area ("topics to review") tracking
 - Resume an unfinished quiz after the app is killed mid-attempt
 - Quiz browsing by difficulty/category with metadata badges
+- Offline quiz browsing: the catalog is cached and shown when there's no connection
+- Auth-guarded routing (signed-out users are redirected to the sign-in screen)
 - Quiz content served from Supabase (`quizzes`/`questions`/`options` tables)
 - Progress tracking: average/best scores, attempt history
 - Server-side persistence of quiz attempts (Supabase, RLS-protected)

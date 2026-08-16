@@ -7,8 +7,8 @@ Each phase has: **goal → tasks → why it matters**. Check items off as you go
 PHASE 1  Backend & data        ✅ DONE
 PHASE 2  Auth & onboarding     ✅ DONE
 PHASE 3  Quiz engine          ✅ DONE
-PHASE 4  Architecture         ◻ NEXT
-PHASE 5  Quality & testing    ◻
+PHASE 4  Architecture         ✅ DONE
+PHASE 5  Quality & testing    ◻ NEXT
 PHASE 6  Shipping             ◻
 ```
 
@@ -102,21 +102,46 @@ Fix later with a Postgres function that returns questions **without** the correc
 
 ---
 
-## Phase 4 — Architecture & state management ◻
+## Phase 4 — Architecture & state management ✅ DONE
 
 **Goal:** replace the fragile "every screen manages its own `setState`" pattern.
 
-### Tasks
-- [ ] Introduce **Riverpod** (recommended) or **Bloc**
-- [ ] Move auth + quiz + progress state into providers/repositories
-- [ ] `go_router` for navigation with **auth guards** (redirect to login when signed out)
-- [ ] Central error handling + load states (no scattered `catch (_)` in screens)
-- [ ] Offline support: cache quizzes with `hive` or Supabase's built-in offline
-- [ ] DI/bin the global `supabase` getter behind a small repository layer
+### Done
+- [x] **Riverpod** introduced for all state (auth, quiz catalog, progress, profile).
+- [x] **Repositories** (`lib/repositories/`) own every Supabase call — auth, quiz,
+  progress, profile. Screens never touch the database.
+- [x] **`go_router`** with **auth guards**: `lib/core/router.dart` redirects
+  signed-out users to `/auth` and signed-in users away from it, reacting live
+  to the auth stream. `/quiz` + `/review` pass objects via `extra`.
+- [x] **Central error handling + load states**: one `MessageHost` renders all
+  snackbars from a single `messageControllerProvider`; screens draw
+  loading/error/data straight from `AsyncValue` instead of scattered
+  `catch (_)` + booleans.
+- [x] **Offline support**: `QuizCache` (`lib/services/quiz_cache.dart`) persists
+  the catalog; `QuizListNotifier` shows the cache instantly, refreshes in the
+  background, and falls back to it when offline.
+- [x] **DI**: the global `supabase` getter is now only touched by
+  `supabaseProvider`; every repository receives its client through it.
+- [x] `Quiz`/`Question` gained `toMap()` so cached data round-trips.
 
-### Why
-More screens + features will make per-screen state unmaintainable. This phase
-keeps the app sane as it grows. Do it **before** adding many new features.
+### Files touched
+`pubspec.yaml`, `lib/main.dart`, `lib/core/router.dart` (new),
+`lib/repositories/{auth,quiz,progress,profile}_repository.dart` (new),
+`lib/providers/{supabase,auth,quiz,progress,profile}_providers.dart` (new),
+`lib/providers/message_controller.dart` (new),
+`lib/services/quiz_cache.dart` (new),
+`lib/screens/{auth,forgot_password,home,quiz,history,profile,review}_screen.dart`,
+`lib/models/models.dart`, `test/repositories_test.dart` (new)
+Deleted: `lib/services/{quiz,progress,profile}_service.dart`,
+`lib/screens/splash_screen.dart`
+
+### Follow-ups (later phases)
+- `CODE_WALKTHROUGH.md` still describes the pre-Phase-4 `setState`/`SessionGate`
+  architecture — rewrite it in the next docs pass.
+- `QuizCache` deliberately uses `shared_preferences` (small catalog, already a
+  dependency, test-friendly). Swap to `hive` when the catalog grows, and fold
+  resume storage (`quiz_storage.dart`) into the same cache.
+- Server-side grading (Phase 1 follow-up) is still open.
 
 ---
 
