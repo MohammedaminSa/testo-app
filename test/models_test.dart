@@ -131,5 +131,40 @@ void main() {
       expect(quiz.timeLimitSeconds, 20);
       expect(quiz.paperSize, 5);
     });
+
+    test('toMap round-trips through fromMap (cache format)', () {
+      const quiz = Quiz(
+        id: 'q',
+        title: 'T',
+        description: 'D',
+        category: 'Mobile',
+        difficulty: 'Beginner',
+        tags: ['Flutter'],
+        timeLimitSeconds: 20,
+        paperSize: 3,
+        questions: [
+          Question(
+            id: 'q1',
+            text: 'Question?',
+            options: ['A', 'B'],
+            correctIndex: 1,
+            explanation: 'Exp',
+            topic: 'OOP',
+          ),
+        ],
+      );
+
+      final restored = Quiz.fromMap(quiz.toMap());
+
+      expect(restored.id, quiz.id);
+      expect(restored.category, quiz.category);
+      expect(restored.difficulty, quiz.difficulty);
+      expect(restored.tags, quiz.tags);
+      expect(restored.timeLimitSeconds, 20);
+      expect(restored.paperSize, 3);
+      expect(restored.questions.length, 1);
+      expect(restored.questions.first.correctIndex, 1);
+      expect(restored.questions.first.topic, 'OOP');
+    });
   });
 }
