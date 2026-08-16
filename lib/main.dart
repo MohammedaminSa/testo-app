@@ -1,15 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'core/config.dart';
 import 'core/router.dart';
 import 'core/theme.dart';
+import 'providers/auth_providers.dart';
 import 'providers/message_controller.dart';
+import 'providers/observability_providers.dart';
+import 'services/analytics_service.dart';
+import 'services/crash_reporter.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await AppConfig.initSupabase();
-  runApp(const ProviderScope(child: TestoApp()));
+  await initCrashReporting();
+  final analytics = AnalyticsService();
+  await analytics.init();
+  runApp(
+    ProviderScope(
+      overrides: [analyticsProvider.overrideWithValue(analytics)],
+      child: const TestoApp(),
+    ),
+  );
 }
 
 class TestoApp extends ConsumerWidget {
@@ -17,6 +30,12 @@ class TestoApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.listen<AsyncValue<User?>>(currentUserProvider, (previous, next) {
+      final user = next.value;
+      if (user != null) {
+        ref.read(analyticsProvider).identify(user.id);
+      }
+    });
     final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'Testo',

@@ -6,6 +6,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../core/theme.dart';
 import '../providers/auth_providers.dart';
 import '../providers/message_controller.dart';
+import '../providers/observability_providers.dart';
 
 class AuthScreen extends ConsumerStatefulWidget {
   const AuthScreen({super.key});
@@ -55,6 +56,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
           email: _emailController.text.trim(),
           password: _passwordController.text,
         );
+        ref.read(analyticsProvider).track('sign_in', properties: {
+          'method': 'email',
+        });
       } else {
         final response = await auth.signUp(
           email: _emailController.text.trim(),
@@ -63,6 +67,9 @@ class _AuthScreenState extends ConsumerState<AuthScreen> {
             'display_name': _nameController.text.trim(),
           },
         );
+        ref.read(analyticsProvider).track('sign_up', properties: {
+          'method': 'email',
+        });
         if (response.session == null) {
           // Email confirmation is enabled: the user must verify before
           // signing in, so guide them to their inbox.

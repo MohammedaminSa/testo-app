@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../providers/message_controller.dart';
+import '../providers/observability_providers.dart';
 import '../providers/progress_providers.dart';
 import '../services/quiz_storage.dart';
 import 'review_screen.dart';
@@ -79,6 +80,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     final size = widget.quiz.paperSize ?? shuffled.length;
     _paper = shuffled.take(size.clamp(1, shuffled.length)).toList();
     _timeLimitSeconds = widget.quiz.timeLimitSeconds;
+    ref.read(analyticsProvider).track('quiz_started', properties: {
+      'quiz_id': widget.quiz.id,
+      'quiz_title': widget.quiz.title,
+    });
   }
 
   Future<bool?> _promptResume() {
@@ -163,6 +168,13 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   /// Saves the attempt to the cloud, then opens the review screen. A failed
   /// save never blocks the user — the message host surfaces the error.
   Future<void> _complete(QuizResult result) async {
+    ref.read(analyticsProvider).track('quiz_completed', properties: {
+      'quiz_id': widget.quiz.id,
+      'quiz_title': widget.quiz.title,
+      'score_percent': result.scorePercent,
+      'correct': result.correctCount,
+      'total': result.totalQuestions,
+    });
     final attempt = QuizAttempt(
       quizId: widget.quiz.id,
       quizTitle: widget.quiz.title,
