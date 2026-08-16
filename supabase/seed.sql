@@ -1,34 +1,51 @@
 -- Testo - seed quiz content
 -- Run this in the Supabase SQL editor AFTER schema.sql.
 
-insert into public.quizzes (id, title, description) values
-  ('flutter_basics', 'Flutter Basics', 'Core Flutter & Dart concepts for beginners.'),
-  ('interview_prep', 'Interview Prep', 'Common software engineering interview questions.')
-on conflict (id) do nothing;
+insert into public.quizzes
+  (id, title, description, category, difficulty, tags, time_limit_seconds, paper_size) values
+  ('flutter_basics', 'Flutter Basics', 'Core Flutter & Dart concepts for beginners.',
+   'Mobile', 'Beginner', '{Flutter, Dart, Beginner}', 20, null),
+  ('interview_prep', 'Interview Prep', 'Common software engineering interview questions.',
+   'Software Engineering', 'Intermediate',
+   '{Algorithms, "Data Structures", OOP}', 30, null)
+on conflict (id) do update set
+  description = excluded.description,
+  category = excluded.category,
+  difficulty = excluded.difficulty,
+  tags = excluded.tags,
+  time_limit_seconds = excluded.time_limit_seconds,
+  paper_size = excluded.paper_size;
 
-insert into public.questions (id, quiz_id, position, text, explanation) values
+insert into public.questions (id, quiz_id, position, text, explanation, topic) values
   ('00000000-0000-0000-0000-000000000001', 'flutter_basics', 1,
    'What language is Flutter built with?',
-   'Flutter uses Dart, a client-optimized language developed by Google.'),
+   'Flutter uses Dart, a client-optimized language developed by Google.',
+   'Flutter Fundamentals'),
   ('00000000-0000-0000-0000-000000000002', 'flutter_basics', 2,
    'What widget is the root of every Flutter app?',
-   'MaterialApp (or CupertinoApp) is the root widget that configures theme, routes, and more.'),
+   'MaterialApp (or CupertinoApp) is the root widget that configures theme, routes, and more.',
+   'Flutter Fundamentals'),
   ('00000000-0000-0000-0000-000000000003', 'flutter_basics', 3,
    'Which widget provides the basic app structure with an AppBar?',
-   'Scaffold gives the app a visual structure including AppBar, body, and FAB.'),
+   'Scaffold gives the app a visual structure including AppBar, body, and FAB.',
+   'Flutter Widgets'),
   ('00000000-0000-0000-0000-000000000004', 'flutter_basics', 4,
    'StatefulWidget is used when...',
-   'StatefulWidget allows mutable state that triggers rebuilds via setState().'),
+   'StatefulWidget allows mutable state that triggers rebuilds via setState().',
+   'State Management'),
   ('00000000-0000-0000-0000-000000000005', 'interview_prep', 1,
    'What is the time complexity of binary search?',
-   'Binary search halves the search space each step, giving O(log n).'),
+   'Binary search halves the search space each step, giving O(log n).',
+   'Algorithms'),
   ('00000000-0000-0000-0000-000000000006', 'interview_prep', 2,
    'Which data structure operates FIFO?',
-   'A Queue is First-In, First-Out; a Stack is LIFO.'),
+   'A Queue is First-In, First-Out; a Stack is LIFO.',
+   'Data Structures'),
   ('00000000-0000-0000-0000-000000000007', 'interview_prep', 3,
    'What does SOLID refer to?',
-   'SOLID is a set of five object-oriented design principles.')
-on conflict (id) do nothing;
+   'SOLID is a set of five object-oriented design principles.',
+   'OOP')
+on conflict (id) do update set topic = excluded.topic;
 
 insert into public.options (question_id, position, text, is_correct) values
   ('00000000-0000-0000-0000-000000000001', 1, 'JavaScript', false),
