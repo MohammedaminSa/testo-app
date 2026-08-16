@@ -3,6 +3,14 @@ import 'package:flutter/material.dart';
 import '../core/theme.dart';
 import '../models/models.dart';
 
+/// Extra payload passed to the `/review` route.
+class ReviewArgs {
+  final Quiz quiz;
+  final QuizResult result;
+
+  const ReviewArgs({required this.quiz, required this.result});
+}
+
 /// Shown right after a quiz finishes: the score, which topics need work,
 /// and a question-by-question breakdown with explanations.
 class ReviewScreen extends StatelessWidget {

@@ -1,21 +1,26 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../core/theme.dart';
 import '../models/models.dart';
+import '../providers/message_controller.dart';
+import '../providers/progress_providers.dart';
 import '../services/quiz_storage.dart';
+import 'review_screen.dart';
 
-class QuizScreen extends StatefulWidget {
+class QuizScreen extends ConsumerStatefulWidget {
   final Quiz quiz;
 
   const QuizScreen({super.key, required this.quiz});
 
   @override
-  State<QuizScreen> createState() => _QuizScreenState();
+  ConsumerState<QuizScreen> createState() => _QuizScreenState();
 }
 
-class _QuizScreenState extends State<QuizScreen> {
+class _QuizScreenState extends ConsumerState<QuizScreen> {
   bool _loading = true;
   late List<Question> _paper;
   int _currentIndex = 0;
@@ -152,7 +157,36 @@ class _QuizScreenState extends State<QuizScreen> {
       questionsOrder: _paper.map((q) => q.id).toList(),
       answers: List.unmodifiable(_answers),
     );
-    Navigator.of(context).pop(result);
+    _complete(result);
+  }
+
+  /// Saves the attempt to the cloud, then opens the review screen. A failed
+  /// save never blocks the user — the message host surfaces the error.
+  Future<void> _complete(QuizResult result) async {
+    final attempt = QuizAttempt(
+      quizId: widget.quiz.id,
+      quizTitle: widget.quiz.title,
+      totalQuestions: result.totalQuestions,
+      correctAnswers: result.correctCount,
+      scorePercent: result.scorePercent,
+      questionsOrder: result.questionsOrder,
+      answers: result.answers,
+      completedAt: DateTime.now(),
+    );
+    try {
+      await ref.read(progressRepositoryProvider).saveAttempt(attempt);
+      ref.invalidate(attemptsProvider);
+    } catch (_) {
+      ref
+          .read(messageControllerProvider.notifier)
+          .show('Result could not be saved to the cloud yet.');
+    }
+    if (mounted) {
+      context.pushReplacement(
+        '/review',
+        extra: ReviewArgs(quiz: widget.quiz, result: result),
+      );
+    }
   }
 
   // -- Timer (per-question countdown + auto-submit) --------------------------
