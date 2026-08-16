@@ -6,8 +6,8 @@ A mobile app that helps users prepare for exams and interviews through quizzes, 
 
 ## Tech Stack
 
-- Flutter (Dart)
-- Supabase (auth + database)
+- Frontend  Flutter (Dart)
+- Apis Supabase (auth + database)
 
 ## Setup
 
