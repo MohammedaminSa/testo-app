@@ -1,4 +1,4 @@
-# Testo
+# Testo App
 
 **Learn. Practice. Pass.**
 
