@@ -8,7 +8,7 @@ PHASE 1  Backend & data        ✅ DONE
 PHASE 2  Auth & onboarding     ✅ DONE
 PHASE 3  Quiz engine          ✅ DONE
 PHASE 4  Architecture         ✅ DONE
-PHASE 5  Quality & testing    ◻ NEXT
+PHASE 5  Quality & testing    ✅ DONE
 PHASE 6  Shipping             ◻
 ```
 
@@ -145,21 +145,53 @@ Deleted: `lib/services/{quiz,progress,profile}_service.dart`,
 
 ---
 
-## Phase 5 — Quality & testing ◻
+## Phase 5 — Quality & testing ✅ DONE
 
 **Goal:** the app is verifiably correct and safe to change.
 
-### Tasks
-- [ ] Unit tests: `models` (`fromMap`/`toMap`), service logic (mock Supabase)
-- [ ] Widget tests: AuthScreen, QuizScreen (answer flow), HomeScreen states
-- [ ] Integration test: sign in → take quiz → see history (using test Supabase)
-- [ ] CI in GitHub Actions: `flutter analyze` + `flutter test` on every PR
-- [ ] Analytics (Firebase Analytics / PostHog): which quizzes are popular
-- [ ] Crash & error reporting (Sentry)
+### Done
+- [x] **Unit tests**: `QuizCache` round-trip (mock shared_preferences) and
+  `QuizListNotifier` — demo fallback, repository fetch + cache write, and
+  offline-cache fallback when the network fails
+  (`test/quiz_cache_test.dart`, `test/quiz_list_notifier_test.dart`).
+- [x] **Widget tests** with fake repositories (`test/helpers/fakes.dart`):
+  - `AuthScreen`: empty-form validation, successful sign-in, failure snackbar
+  - `QuizScreen`: answer → explanation → finish saves the attempt + navigates
+    to review (100% and 0% score paths)
+  - `HomeScreen`: quiz cards + stats, loading spinner, error + retry, tap→quiz
+- [x] **Integration test**: sign in → take a quiz → see it in history against a
+  real test Supabase project (`integration_test/app_test.dart`). Not run by
+  `flutter test`; runs on a device with `SUPABASE_URL`/`ANON_KEY`/
+  `TEST_EMAIL`/`TEST_PASSWORD` dart-defines.
+- [x] **CI in GitHub Actions**: `.github/workflows/ci.yml` runs
+  `flutter analyze` + `flutter test` on every push/PR.
+- [x] **Analytics (PostHog)** behind a dart-define (`POSTHOG_API_KEY`):
+  `AnalyticsService` (`lib/services/analytics_service.dart`) tracks
+  `sign_in`, `sign_up`, `quiz_started`, `quiz_completed`; no-op when
+  unconfigured.
+- [x] **Crash & error reporting (Sentry)** behind a dart-define (`SENTRY_DSN`):
+  `initCrashReporting()` in `lib/services/crash_reporter.dart`.
 
-### Why
-Currently there's a single placeholder test. Real tests let us add features
-without breaking what already works.
+### Files touched
+`pubspec.yaml`, `.github/workflows/ci.yml` (new),
+`integration_test/app_test.dart` (new),
+`test/helpers/fakes.dart` (new),
+`test/{auth_screen,quiz_screen,home_screen}_test.dart` (new),
+`test/{quiz_cache,quiz_list_notifier}_test.dart` (new),
+`lib/core/config.dart`, `lib/main.dart`,
+`lib/providers/{quiz,observability}_providers.dart`,
+`lib/services/{analytics_service,crash_reporter}.dart` (new),
+`lib/screens/{auth,quiz}_screen.dart`, `ROADMAP.md`
+
+### Follow-ups (later phases)
+- `CODE_WALKTHROUGH.md` still describes the pre-Phase-4 `setState`/`SessionGate`
+  architecture — rewrite it in the next docs pass.
+- Server-side grading (Phase 1/3 follow-up) is still open: questions are still
+  fetched with `is_correct`.
+- Widget tests use fake repositories; an interface (abstract class) per
+  repository would let tests avoid constructing `SupabaseClient` at all.
+- CI only runs `flutter test`; the integration test needs a real test Supabase
+  project before it can join CI.
 
 ---
 

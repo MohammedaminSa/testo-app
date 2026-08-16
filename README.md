@@ -64,3 +64,37 @@ Without the dart-defines the app falls back to the bundled demo quizzes so it st
 - Quiz content served from Supabase (`quizzes`/`questions`/`options` tables)
 - Progress tracking: average/best scores, attempt history
 - Server-side persistence of quiz attempts (Supabase, RLS-protected)
+- Analytics (PostHog) + crash/error reporting (Sentry) behind dart-defines
+
+## Testing
+
+```bash
+flutter analyze
+flutter test          # unit + widget tests (no network)
+```
+
+The CI workflow (`.github/workflows/ci.yml`) runs both on every push/PR.
+
+The end-to-end flow (sign in → take a quiz → see it in history) lives in
+`integration_test/app_test.dart` and needs a dedicated test Supabase project.
+It is not part of `flutter test`; run it on a device/emulator with:
+
+```bash
+flutter test integration_test -d <device> \
+  --dart-define=SUPABASE_URL=https://your-test-project.supabase.co \
+  --dart-define=SUPABASE_ANON_KEY=<anon key> \
+  --dart-define=TEST_EMAIL=<test account email> \
+  --dart-define=TEST_PASSWORD=<test account password>
+```
+
+### Analytics & crash reporting (optional)
+
+The app ships with PostHog analytics and Sentry crash reporting wired in but
+**disabled by default**. Enable them by passing the keys:
+
+```bash
+flutter run --dart-define=POSTHOG_API_KEY=<project api key> \
+  --dart-define=SENTRY_DSN=<sentry dsn>
+```
+
+Without them every analytics/crash call is a silent no-op.
