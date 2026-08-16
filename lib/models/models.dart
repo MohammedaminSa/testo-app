@@ -10,10 +10,15 @@ class Question {
     required this.id,
     required this.text,
     required this.options,
-    required this.correctIndex,
+    this.correctIndex = -1,
     required this.explanation,
     required this.topic,
   });
+
+  /// Whether the correct answer is known locally. Quizzes fetched from the
+  /// backend omit `is_correct` (grading happens server-side), so this is only
+  /// true for demo/bundled quizzes.
+  bool get hasCorrectAnswer => correctIndex >= 0 && correctIndex < options.length;
 
   factory Question.fromMap(Map<String, dynamic> map) {
     final optionRows =
@@ -128,6 +133,29 @@ class Profile {
   }
 }
 
+/// What the user picked for one question while taking a quiz. No correctness
+/// is attached — the server grades submissions via `grade_attempt`.
+class SubmittedAnswer {
+  final String questionId;
+  final int? selectedIndex;
+
+  const SubmittedAnswer({required this.questionId, this.selectedIndex});
+
+  factory SubmittedAnswer.fromMap(Map<String, dynamic> map) {
+    return SubmittedAnswer(
+      questionId: map['question_id'] as String? ?? '',
+      selectedIndex: map['selected_index'] as int?,
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'question_id': questionId,
+      'selected_index': selectedIndex,
+    };
+  }
+}
+
 /// One question's result within an attempt: what the user picked vs the
 /// correct answer. Powers the review screen and weak-area tracking.
 class QuestionAnswer {
@@ -197,6 +225,21 @@ class QuizResult {
     required this.questionsOrder,
     required this.answers,
   });
+
+  /// Parses the response of the `grade_attempt` RPC.
+  factory QuizResult.fromMap(Map<String, dynamic> map) {
+    return QuizResult(
+      correctCount: map['correct_answers'] as int? ?? 0,
+      totalQuestions: map['total_questions'] as int? ?? 0,
+      scorePercent: (map['score_percent'] as num?)?.toDouble() ?? 0,
+      questionsOrder: ((map['questions_order'] as List?) ?? const [])
+          .cast<String>(),
+      answers: ((map['answers'] as List?) ?? const [])
+          .cast<Map<String, dynamic>>()
+          .map(QuestionAnswer.fromMap)
+          .toList(),
+    );
+  }
 }
 
 class QuizAttempt {

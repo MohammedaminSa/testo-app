@@ -9,7 +9,7 @@ import '../models/models.dart';
 class InProgressQuiz {
   final List<Question> paper;
   final int currentIndex;
-  final List<QuestionAnswer> answers;
+  final List<SubmittedAnswer> answers;
   final int? timeLimitSeconds;
 
   const InProgressQuiz({
@@ -29,7 +29,7 @@ class QuizStorage {
     required String quizId,
     required List<Question> paper,
     required int currentIndex,
-    required List<QuestionAnswer> answers,
+    required List<SubmittedAnswer> answers,
     int? timeLimitSeconds,
   }) async {
     final prefs = await SharedPreferences.getInstance();
@@ -60,7 +60,7 @@ class QuizStorage {
         currentIndex: map['current_index'] as int? ?? 0,
         answers: ((map['answers'] as List?) ?? const [])
             .cast<Map<String, dynamic>>()
-            .map(QuestionAnswer.fromMap)
+            .map(SubmittedAnswer.fromMap)
             .toList(),
         timeLimitSeconds: map['time_limit_seconds'] as int?,
       );
