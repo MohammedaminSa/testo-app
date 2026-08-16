@@ -9,6 +9,7 @@ import '../services/quiz_service.dart';
 import 'history_screen.dart';
 import 'profile_screen.dart';
 import 'quiz_screen.dart';
+import 'review_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Quiz>? _quizzes;
   bool _loadingQuizzes = true;
   bool _quizError = false;
+  String? _difficultyFilter;
 
   @override
   void initState() {
@@ -86,70 +88,45 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _startQuiz(Quiz quiz) async {
-    final correctCount = await Navigator.of(context).push<int>(
+    final result = await Navigator.of(context).push<QuizResult>(
       MaterialPageRoute(builder: (_) => QuizScreen(quiz: quiz)),
     );
-    if (correctCount != null) {
-      _saveAttempt(quiz, correctCount);
-    }
-    _loadStats();
-  }
+    if (result == null || !mounted) return;
 
-  Future<void> _saveAttempt(Quiz quiz, int correctCount) async {
     final attempt = QuizAttempt(
       quizId: quiz.id,
       quizTitle: quiz.title,
-      totalQuestions: quiz.questions.length,
-      correctAnswers: correctCount,
-      scorePercent: correctCount / quiz.questions.length * 100,
+      totalQuestions: result.totalQuestions,
+      correctAnswers: result.correctCount,
+      scorePercent: result.scorePercent,
+      questionsOrder: result.questionsOrder,
+      answers: result.answers,
       completedAt: DateTime.now(),
     );
+
+    var saved = false;
     try {
       await _progressService.saveAttempt(attempt);
-      if (mounted) _showResultDialog(attempt);
+      saved = true;
     } catch (_) {
-      if (mounted) _showResultDialog(attempt, saved: false);
+      // Never block the user on a failed save.
     }
-  }
+    _loadStats();
 
-  void _showResultDialog(QuizAttempt attempt, {bool saved = true}) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Quiz Complete!'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Score: ${attempt.scorePercent.toStringAsFixed(0)}%',
-              style: const TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.bold,
-                color: AppTheme.primary,
-              ),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '${attempt.correctAnswers} of ${attempt.totalQuestions} correct',
-            ),
-            if (!saved) ...[
-              const SizedBox(height: 8),
-              const Text(
-                'Note: result could not be saved to the cloud yet.',
-                style: TextStyle(color: Colors.orange),
-              ),
-            ],
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('OK'),
-          ),
-        ],
+    if (!mounted) return;
+    await Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => ReviewScreen(quiz: quiz, result: result),
       ),
     );
+
+    if (!saved && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Result could not be saved to the cloud yet.'),
+        ),
+      );
+    }
   }
 
   @override
@@ -198,6 +175,7 @@ class _HomeScreenState extends State<HomeScreen> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 12),
+            if (!_loadingQuizzes && !_quizError) _buildFilterRow(),
             ..._buildQuizCards(),
             const SizedBox(height: 24),
           ],
@@ -220,6 +198,7 @@ class _HomeScreenState extends State<HomeScreen> {
     final bestScore = (_stats['bestScore'] as double?) ?? 0;
     final attempts = _stats['totalAttempts'] as int? ?? 0;
     final quizzesTaken = _stats['quizzesTaken'] as int? ?? 0;
+    final weakTopics = (_stats['weakTopics'] as List?) ?? const <String>[];
 
     return Card(
       child: Padding(
@@ -251,6 +230,29 @@ class _HomeScreenState extends State<HomeScreen> {
                 _statItem('Quizzes', '$quizzesTaken'),
               ],
             ),
+            if (weakTopics.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              const Text(
+                'Topics to review',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: weakTopics
+                    .map((t) => Chip(
+                          label: Text(t),
+                          backgroundColor:
+                              Colors.orange.withValues(alpha: 0.12),
+                          side: BorderSide(
+                            color: Colors.orange.withValues(alpha: 0.3),
+                          ),
+                          visualDensity: VisualDensity.compact,
+                        ))
+                    .toList(),
+              ),
+            ],
           ],
         ),
       ),
@@ -273,6 +275,42 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  Widget _buildFilterRow() {
+    final difficulties = (_quizzes ?? const <Quiz>[])
+        .map((q) => q.difficulty)
+        .toSet()
+        .toList()
+      ..sort();
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        children: [
+          ChoiceChip(
+            label: const Text('All'),
+            selected: _difficultyFilter == null,
+            onSelected: (_) => setState(() => _difficultyFilter = null),
+          ),
+          ...difficulties.map(
+            (d) => Padding(
+              padding: const EdgeInsets.only(left: 8),
+              child: ChoiceChip(
+                label: Text(d),
+                selected: _difficultyFilter == d,
+                onSelected: (_) => setState(() => _difficultyFilter = d),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<Quiz> get _visibleQuizzes {
+    final all = _quizzes ?? const <Quiz>[];
+    if (_difficultyFilter == null) return all;
+    return all.where((q) => q.difficulty == _difficultyFilter).toList();
   }
 
   List<Widget> _buildQuizCards() {
@@ -309,26 +347,88 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ];
     }
-    return (_quizzes ?? const <Quiz>[]).map(_buildQuizCard).toList();
+    final quizzes = _visibleQuizzes;
+    if (quizzes.isEmpty) {
+      return const [
+        Padding(
+          padding: EdgeInsets.symmetric(vertical: 24),
+          child: Center(
+            child: Text(
+              'No quizzes match this filter.',
+              style: TextStyle(color: Colors.black54),
+            ),
+          ),
+        ),
+      ];
+    }
+    return quizzes.map(_buildQuizCard).toList();
   }
 
   Widget _buildQuizCard(Quiz quiz) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
-      child: ListTile(
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: const CircleAvatar(
-          backgroundColor: AppTheme.primary,
-          child: Icon(Icons.quiz, color: Colors.white),
-        ),
-        title: Text(
-          quiz.title,
-          style: const TextStyle(fontWeight: FontWeight.w600),
-        ),
-        subtitle: Text(quiz.description),
-        trailing: const Icon(Icons.chevron_right),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(12),
         onTap: () => _startQuiz(quiz),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              const CircleAvatar(
+                backgroundColor: AppTheme.primary,
+                child: Icon(Icons.quiz, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      quiz.title,
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      quiz.description,
+                      style: const TextStyle(color: Colors.black54, fontSize: 13),
+                    ),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 6,
+                      runSpacing: 6,
+                      children: [
+                        _badge(quiz.difficulty, AppTheme.primary),
+                        _badge(quiz.category, Colors.black54),
+                        ...quiz.tags
+                            .take(2)
+                            .map((t) => _badge(t, Colors.black54)),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _badge(String text, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 11,
+          fontWeight: FontWeight.w600,
+          color: color,
+        ),
       ),
     );
   }
