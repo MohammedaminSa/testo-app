@@ -7,6 +7,7 @@ import '../models/models.dart';
 import '../services/progress_service.dart';
 import '../services/quiz_service.dart';
 import 'history_screen.dart';
+import 'profile_screen.dart';
 import 'quiz_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -78,8 +79,10 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  Future<void> _signOut() async {
-    await supabase.auth.signOut();
+  void _openProfile() {
+    Navigator.of(context).push(
+      MaterialPageRoute(builder: (_) => const ProfileScreen()),
+    );
   }
 
   void _startQuiz(Quiz quiz) async {
@@ -165,9 +168,9 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
           IconButton(
-            tooltip: 'Sign out',
-            icon: const Icon(Icons.logout),
-            onPressed: _signOut,
+            tooltip: 'Profile',
+            icon: const Icon(Icons.account_circle_outlined),
+            onPressed: _openProfile,
           ),
         ],
       ),

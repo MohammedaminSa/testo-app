@@ -52,6 +52,26 @@ class Quiz {
   }
 }
 
+class Profile {
+  final String id;
+  final String displayName;
+  final DateTime createdAt;
+
+  const Profile({
+    required this.id,
+    required this.displayName,
+    required this.createdAt,
+  });
+
+  factory Profile.fromMap(Map<String, dynamic> map) {
+    return Profile(
+      id: map['id'] as String,
+      displayName: map['display_name'] as String? ?? '',
+      createdAt: DateTime.parse(map['created_at'] as String),
+    );
+  }
+}
+
 class QuizAttempt {
   final String quizId;
   final String quizTitle;

@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../core/config.dart';
 import '../core/theme.dart';
+import 'forgot_password_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -13,18 +14,27 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _confirmController = TextEditingController();
 
   bool _isLogin = true;
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
 
   @override
   void dispose() {
+    _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _confirmController.dispose();
     super.dispose();
+  }
+
+  void _toggleMode() {
+    setState(() => _isLogin = !_isLogin);
   }
 
   Future<void> _submit() async {
@@ -39,24 +49,50 @@ class _AuthScreenState extends State<AuthScreen> {
           password: _passwordController.text,
         );
       } else {
-        await supabase.auth.signUp(
+        final response = await supabase.auth.signUp(
           email: _emailController.text.trim(),
           password: _passwordController.text,
+          data: {
+            'display_name': _nameController.text.trim(),
+          },
         );
+        if (response.session == null) {
+          // Email confirmation is enabled: the user must verify before
+          // signing in, so guide them to their inbox.
+          _showSnackBar(
+            'Account created! We sent a confirmation link to '
+            '${_emailController.text.trim()}. Verify your email to sign in.',
+          );
+        }
       }
     } on AuthException catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(e.message)));
-      }
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(const SnackBar(content: Text('Something went wrong')));
-      }
+      _showSnackBar(e.message);
+    } catch (_) {
+      _showSnackBar('Something went wrong. Please try again.');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  Future<void> _signInWithOAuth(OAuthProvider provider) async {
+    setState(() => _isLoading = true);
+    try {
+      await supabase.auth.signInWithOAuth(provider);
+      // Success is observed via the auth stream in SessionGate, which swaps
+      // to HomeScreen once a session exists.
+    } on AuthException catch (e) {
+      _showSnackBar(e.message);
+    } catch (_) {
+      _showSnackBar('Could not open the sign-in page.');
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
+    }
+  }
+
+  void _showSnackBar(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context)
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   @override
@@ -97,6 +133,24 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
+                  if (!_isLogin) ...[
+                    TextFormField(
+                      controller: _nameController,
+                      textInputAction: TextInputAction.next,
+                      textCapitalization: TextCapitalization.words,
+                      decoration: const InputDecoration(
+                        labelText: 'Display name',
+                        prefixIcon: Icon(Icons.person_outline),
+                      ),
+                      validator: (value) {
+                        if ((value ?? '').trim().isEmpty) {
+                          return 'Enter a display name';
+                        }
+                        return null;
+                      },
+                    ),
+                    const SizedBox(height: 16),
+                  ],
                   TextFormField(
                     controller: _emailController,
                     keyboardType: TextInputType.emailAddress,
@@ -117,8 +171,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   TextFormField(
                     controller: _passwordController,
                     obscureText: _obscurePassword,
-                    textInputAction: TextInputAction.done,
-                    onFieldSubmitted: (_) => _submit(),
+                    textInputAction: TextInputAction.next,
                     decoration: InputDecoration(
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline),
@@ -141,7 +194,53 @@ class _AuthScreenState extends State<AuthScreen> {
                       return null;
                     },
                   ),
-                  const SizedBox(height: 24),
+                  if (!_isLogin) ...[
+                    const SizedBox(height: 16),
+                    TextFormField(
+                      controller: _confirmController,
+                      obscureText: _obscureConfirm,
+                      textInputAction: TextInputAction.done,
+                      onFieldSubmitted: (_) => _submit(),
+                      decoration: InputDecoration(
+                        labelText: 'Confirm password',
+                        prefixIcon: const Icon(Icons.lock_outline),
+                        suffixIcon: IconButton(
+                          icon: Icon(_obscureConfirm
+                              ? Icons.visibility_outlined
+                              : Icons.visibility_off_outlined),
+                          onPressed: () => setState(
+                            () => _obscureConfirm = !_obscureConfirm,
+                          ),
+                        ),
+                      ),
+                      validator: (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Confirm your password';
+                        }
+                        if (value != _passwordController.text) {
+                          return 'Passwords do not match';
+                        }
+                        return null;
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 8),
+                  if (_isLogin)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: _isLoading
+                            ? null
+                            : () => Navigator.of(context).push(
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        const ForgotPasswordScreen(),
+                                  ),
+                                ),
+                        child: const Text('Forgot password?'),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
                   ElevatedButton(
                     onPressed: _isLoading ? null : _submit,
                     child: _isLoading
@@ -155,11 +254,53 @@ class _AuthScreenState extends State<AuthScreen> {
                           )
                         : Text(_isLogin ? 'Sign In' : 'Create Account'),
                   ),
+                  const SizedBox(height: 24),
+                  Row(
+                    children: [
+                      const Expanded(child: Divider()),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'or continue with',
+                          style: TextStyle(fontSize: 12, color: Colors.black45),
+                        ),
+                      ),
+                      const Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoading
+                              ? null
+                              : () => _signInWithOAuth(OAuthProvider.google),
+                          icon: const Icon(Icons.g_mobiledata, size: 28),
+                          label: const Text('Google'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 52),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: _isLoading
+                              ? null
+                              : () => _signInWithOAuth(OAuthProvider.apple),
+                          icon: const Icon(Icons.apple),
+                          label: const Text('Apple'),
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 52),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   const SizedBox(height: 16),
                   TextButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () => setState(() => _isLogin = !_isLogin),
+                    onPressed: _isLoading ? null : _toggleMode,
                     child: Text(
                       _isLogin
                           ? "Don't have an account? Sign up"
