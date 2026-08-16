@@ -28,8 +28,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   int? _selectedIndex;
   bool _answered = false;
   bool _finished = false;
-  int _correctCount = 0;
-  final List<QuestionAnswer> _answers = [];
+  final List<SubmittedAnswer> _answers = [];
 
   Timer? _timer;
   int? _timeLimitSeconds;
@@ -61,7 +60,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
               ? saved.currentIndex
               : saved.paper.length - 1;
           _answers.addAll(saved.answers);
-          _correctCount = _answers.where((a) => a.isCorrect).length;
           _timeLimitSeconds = saved.timeLimitSeconds;
           _loading = false;
         });
@@ -113,7 +111,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     setState(() {
       _selectedIndex = index;
       _answered = true;
-      if (index == _question.correctIndex) _correctCount++;
     });
     _recordAnswer();
     _stopTimer();
@@ -122,17 +119,9 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
 
   void _recordAnswer() {
     final q = _question;
-    final selected = _selectedIndex;
-    _answers.add(QuestionAnswer(
+    _answers.add(SubmittedAnswer(
       questionId: q.id,
-      questionText: q.text,
-      topic: q.topic,
-      selectedIndex: selected,
-      correctIndex: q.correctIndex,
-      selectedText: selected != null ? q.options[selected] : '',
-      correctText: q.options[q.correctIndex],
-      isCorrect: selected != null && selected == q.correctIndex,
-      explanation: q.explanation,
+      selectedIndex: _selectedIndex,
     ));
   }
 
@@ -155,19 +144,66 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
     _finished = true;
     _stopTimer();
     QuizStorage.clear(widget.quiz.id);
-    final result = QuizResult(
-      correctCount: _correctCount,
-      totalQuestions: _paper.length,
-      scorePercent: _paper.isEmpty ? 0 : _correctCount / _paper.length * 100,
-      questionsOrder: _paper.map((q) => q.id).toList(),
-      answers: List.unmodifiable(_answers),
-    );
-    _complete(result);
+    _gradeAndComplete();
   }
 
-  /// Saves the attempt to the cloud, then opens the review screen. A failed
-  /// save never blocks the user — the message host surfaces the error.
-  Future<void> _complete(QuizResult result) async {
+  /// Grades the attempt — locally for bundled demo quizzes, via the
+  /// `grade_attempt` RPC otherwise — then opens the review screen. The server
+  /// is the source of truth for real quizzes, so answers never leave it.
+  Future<void> _gradeAndComplete() async {
+    final questionsOrder = _paper.map((q) => q.id).toList();
+
+    if (widget.quiz.questions.every((q) => q.hasCorrectAnswer)) {
+      _complete(_gradeLocally(questionsOrder));
+      return;
+    }
+
+    try {
+      final result = await ref
+          .read(progressRepositoryProvider)
+          .gradeAttempt(quizId: widget.quiz.id, answers: _answers);
+      ref.invalidate(attemptsProvider);
+      _complete(result);
+    } catch (_) {
+      ref
+          .read(messageControllerProvider.notifier)
+          .show('Could not submit your answers. Check your connection.');
+      _finished = false;
+    }
+  }
+
+  /// Demo-mode grading: answers are validated against the bundled correct
+  /// indexes so the review screen works without a backend.
+  QuizResult _gradeLocally(List<String> questionsOrder) {
+    final byId = {for (final q in _paper) q.id: q};
+    final gradedAnswers = <QuestionAnswer>[
+      for (final a in _answers)
+        QuestionAnswer(
+          questionId: a.questionId,
+          questionText: byId[a.questionId]!.text,
+          topic: byId[a.questionId]!.topic,
+          selectedIndex: a.selectedIndex,
+          correctIndex: byId[a.questionId]!.correctIndex,
+          selectedText:
+              a.selectedIndex != null ? byId[a.questionId]!.options[a.selectedIndex!] : '',
+          correctText: byId[a.questionId]!.options[byId[a.questionId]!.correctIndex],
+          isCorrect: a.selectedIndex == byId[a.questionId]!.correctIndex,
+          explanation: byId[a.questionId]!.explanation,
+        ),
+    ];
+    final correctCount = gradedAnswers.where((a) => a.isCorrect).length;
+    return QuizResult(
+      correctCount: correctCount,
+      totalQuestions: _paper.length,
+      scorePercent: _paper.isEmpty ? 0 : correctCount / _paper.length * 100,
+      questionsOrder: questionsOrder,
+      answers: List.unmodifiable(gradedAnswers),
+    );
+  }
+
+  /// Fires analytics and opens the review screen. The attempt is already
+  /// persisted by the server in the graded flow.
+  void _complete(QuizResult result) {
     ref.read(analyticsProvider).track('quiz_completed', properties: {
       'quiz_id': widget.quiz.id,
       'quiz_title': widget.quiz.title,
@@ -175,24 +211,6 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
       'correct': result.correctCount,
       'total': result.totalQuestions,
     });
-    final attempt = QuizAttempt(
-      quizId: widget.quiz.id,
-      quizTitle: widget.quiz.title,
-      totalQuestions: result.totalQuestions,
-      correctAnswers: result.correctCount,
-      scorePercent: result.scorePercent,
-      questionsOrder: result.questionsOrder,
-      answers: result.answers,
-      completedAt: DateTime.now(),
-    );
-    try {
-      await ref.read(progressRepositoryProvider).saveAttempt(attempt);
-      ref.invalidate(attemptsProvider);
-    } catch (_) {
-      ref
-          .read(messageControllerProvider.notifier)
-          .show('Result could not be saved to the cloud yet.');
-    }
     if (mounted) {
       context.pushReplacement(
         '/review',
@@ -308,7 +326,7 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     _question.options.length,
                     (i) => _buildOption(i),
                   ),
-                  if (_answered) ...[
+                  if (_answered && _question.hasCorrectAnswer) ...[
                     const SizedBox(height: 16),
                     _buildExplanation(),
                   ],
@@ -335,14 +353,17 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
   }
 
   Widget _buildOption(int index) {
-    final isCorrect = index == _question.correctIndex;
+    final isCorrect = _question.hasCorrectAnswer && index == _question.correctIndex;
     final isSelected = index == _selectedIndex;
+    // Only bundled demo quizzes reveal answers immediately; server quizzes
+    // wait for the graded review screen so answers can't leak to the client.
+    final reveal = _answered && _question.hasCorrectAnswer;
 
     Color? borderColor;
     Color? fillColor;
     Color? textColor;
 
-    if (_answered) {
+    if (reveal) {
       if (isCorrect) {
         borderColor = AppTheme.success;
         fillColor = AppTheme.success.withValues(alpha: 0.1);
@@ -352,6 +373,10 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
         fillColor = AppTheme.error.withValues(alpha: 0.1);
         textColor = AppTheme.error;
       }
+    } else if (isSelected) {
+      borderColor = AppTheme.primary;
+      fillColor = AppTheme.primary.withValues(alpha: 0.08);
+      textColor = AppTheme.primary;
     }
 
     return Padding(
@@ -379,14 +404,18 @@ class _QuizScreenState extends ConsumerState<QuizScreen> {
                     style: TextStyle(
                       fontSize: 15,
                       color: textColor ?? Colors.black87,
-                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+                      fontWeight:
+                          isSelected ? FontWeight.w600 : FontWeight.w400,
                     ),
                   ),
                 ),
-                if (_answered && isCorrect)
+                if (reveal && isCorrect)
                   const Icon(Icons.check_circle, color: AppTheme.success)
-                else if (_answered && isSelected)
-                  const Icon(Icons.cancel, color: AppTheme.error),
+                else if (reveal && isSelected)
+                  const Icon(Icons.cancel, color: AppTheme.error)
+                else if (isSelected)
+                  const Icon(Icons.radio_button_checked,
+                      color: AppTheme.primary),
               ],
             ),
           ),
