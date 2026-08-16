@@ -90,6 +90,22 @@ class Quiz {
       questions: questionRows.map(Question.fromMap).toList(),
     );
   }
+
+  /// Serializes back to a DB-shaped map so a quiz list can be cached
+  /// offline and rebuilt with [Quiz.fromMap].
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'title': title,
+      'description': description,
+      'category': category,
+      'difficulty': difficulty,
+      'tags': tags,
+      'time_limit_seconds': timeLimitSeconds,
+      'paper_size': paperSize,
+      'questions': questions.map((q) => q.toMap()).toList(),
+    };
+  }
 }
 
 class Profile {
