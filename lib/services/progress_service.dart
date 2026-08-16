@@ -57,6 +57,19 @@ class ProgressService {
         totalAttempts;
     final quizzesTaken = attempts.map((a) => a.quizId).toSet().length;
 
+    // Weak-area tracking: topics with the most wrong answers across history.
+    final topicMisses = <String, int>{};
+    for (final a in attempts) {
+      for (final ans in a.answers) {
+        if (!ans.isCorrect && ans.topic.isNotEmpty) {
+          topicMisses[ans.topic] = (topicMisses[ans.topic] ?? 0) + 1;
+        }
+      }
+    }
+    final weakTopics = topicMisses.entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final totalWrong = weakTopics.fold<int>(0, (sum, e) => sum + e.value);
+
     return {
       'totalAttempts': totalAttempts,
       'avgScore': avg,
@@ -64,6 +77,8 @@ class ProgressService {
       'totalCorrect': totalCorrect,
       'totalAnswered': totalAnswered,
       'quizzesTaken': quizzesTaken,
+      'weakTopics': weakTopics.map((e) => e.key).take(5).toList(),
+      'weakTopicCount': totalWrong,
     };
   }
 }
