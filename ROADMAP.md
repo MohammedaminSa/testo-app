@@ -6,8 +6,8 @@ Each phase has: **goal → tasks → why it matters**. Check items off as you go
 ```text
 PHASE 1  Backend & data        ✅ DONE
 PHASE 2  Auth & onboarding     ✅ DONE
-PHASE 3  Quiz engine          ◻ NEXT
-PHASE 4  Architecture         ◻
+PHASE 3  Quiz engine          ✅ DONE
+PHASE 4  Architecture         ◻ NEXT
 PHASE 5  Quality & testing    ◻
 PHASE 6  Shipping             ◻
 ```
@@ -63,22 +63,42 @@ Fix later with a Postgres function that returns questions **without** the correc
 
 ---
 
-## Phase 3 — Quiz engine ◻
+## Phase 3 — Quiz engine ✅ DONE
 
 **Goal:** quizzes feel like real exam prep, not a fixed linear list.
 
-### Tasks
-- [ ] **Randomize** question order per attempt (store "paper" so results are fair)
-- [ ] **Timed mode**: per-question countdown + auto-submit
-- [ ] **Review screen** after quiz: show each wrong answer + explanation
-  (current `_showResultDialog` only shows a score popup)
-- [ ] **Weak-area tracking**: record each question answer → show which topics need work
-- [ ] Question banks + fixed-length papers (e.g. 10 random questions from 50)
-- [ ] Resume an unfinished quiz if the app is killed mid-attempt
-- [ ] Content metadata in DB: `category`, `difficulty`, `tags` + filtering UI
+### Done
+- [x] **Randomize** question order per attempt — each attempt builds a shuffled
+  "paper"; the order + every answer is stored on the attempt (`questions_order`,
+  `answers` jsonb) so results are fair and reviewable.
+- [x] **Timed mode** — optional per-question countdown (from
+  `quizzes.time_limit_seconds`), red warning under 5s, auto-submit on timeout
+  (records "no answer").
+- [x] **Review screen** — after a quiz the app shows a full breakdown: score,
+  each question, your answer vs the correct one, and the explanation
+  (`lib/screens/review_screen.dart`).
+- [x] **Weak-area tracking** — each question's `topic` + correctness is recorded;
+  review screen and home stats card both surface "Topics to review".
+- [x] Question banks + fixed-length papers — `quizzes.paper_size` lets a bank
+  serve a random N-question paper from a larger pool.
+- [x] **Resume an unfinished quiz** — in-progress papers persist locally via
+  `shared_preferences` (`lib/services/quiz_storage.dart`); reopening offers
+  Resume / Start over.
+- [x] Content metadata in DB — `category`, `difficulty`, `tags` on quizzes +
+  difficulty filter chips and metadata badges on the home screen.
 
-### Why
-These are the features that make the app feel like a real study tool and keep users returning.
+### Files touched
+`supabase/schema.sql`, `supabase/seed.sql`, `lib/models/models.dart`,
+`lib/services/quiz_storage.dart` (new), `lib/services/progress_service.dart`,
+`lib/screens/quiz_screen.dart`, `lib/screens/review_screen.dart` (new),
+`lib/screens/home_screen.dart`, `lib/data/demo_quizzes.dart`,
+`test/models_test.dart` (new), `pubspec.yaml`, `README.md`
+
+### Follow-ups (later phases)
+- Server-side grading: questions are still fetched with `is_correct`; move
+  grading into a Postgres function so answers can't be read from the API.
+- Resume persistence uses `shared_preferences`; Phase 4's offline cache (hive)
+  can absorb this and add "current attempt" to the home screen.
 
 ---
 

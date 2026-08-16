@@ -51,6 +51,11 @@ Without the dart-defines the app falls back to the bundled demo quizzes so it st
 - Google and Apple OAuth sign-in buttons
 - User profiles: `profiles` table auto-created on signup, editable display name
 - Multiple-choice quiz engine with instant feedback and explanations
+- Randomized question order per attempt (fixed-length papers from question banks)
+- Timed mode: per-question countdown with auto-submit
+- Post-quiz review screen with explanations and weak-area ("topics to review") tracking
+- Resume an unfinished quiz after the app is killed mid-attempt
+- Quiz browsing by difficulty/category with metadata badges
 - Quiz content served from Supabase (`quizzes`/`questions`/`options` tables)
 - Progress tracking: average/best scores, attempt history
 - Server-side persistence of quiz attempts (Supabase, RLS-protected)
