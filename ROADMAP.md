@@ -9,7 +9,7 @@ PHASE 2  Auth & onboarding     ✅ DONE
 PHASE 3  Quiz engine          ✅ DONE
 PHASE 4  Architecture         ✅ DONE
 PHASE 5  Quality & testing    ✅ DONE
-PHASE 6  Shipping             ◻
+PHASE 6  Shipping             ◻ (code done; store submission pending)
 ```
 
 ---
@@ -30,8 +30,9 @@ PHASE 6  Shipping             ◻
 `lib/models/models.dart`, `lib/screens/home_screen.dart`, `README.md`
 
 ### Known catch (fix in a later phase)
-`is_correct` is currently sent to the client — a hacker could read answers from the API before taking a quiz.
-Fix later with a Postgres function that returns questions **without** the correct answer, and grade server-side.
+- [x] **FIXED (Phase 6)** `is_correct` is now never sent to the client. The
+  `get_quizzes` RPC returns questions **without** the correct answer, and
+  `grade_attempt` grades submissions server-side.
 
 ---
 
@@ -95,10 +96,10 @@ Fix later with a Postgres function that returns questions **without** the correc
 `test/models_test.dart` (new), `pubspec.yaml`, `README.md`
 
 ### Follow-ups (later phases)
-- Server-side grading: questions are still fetched with `is_correct`; move
-  grading into a Postgres function so answers can't be read from the API.
-- Resume persistence uses `shared_preferences`; Phase 4's offline cache (hive)
-  can absorb this and add "current attempt" to the home screen.
+- [x] **DONE (Phase 6)** Server-side grading: questions no longer fetch
+  `is_correct`; `get_quizzes()` / `grade_attempt()` RPCs (see `supabase/schema.sql`).
+- Resume persistence uses `shared_preferences`; Phase 4's offline cache can
+  absorb this and add "current attempt" to the home screen.
 
 ---
 
@@ -136,12 +137,12 @@ Deleted: `lib/services/{quiz,progress,profile}_service.dart`,
 `lib/screens/splash_screen.dart`
 
 ### Follow-ups (later phases)
-- `CODE_WALKTHROUGH.md` still describes the pre-Phase-4 `setState`/`SessionGate`
-  architecture — rewrite it in the next docs pass.
+- [x] **DONE (Phase 6)** `CODE_WALKTHROUGH.md` rewritten for the current
+  architecture.
 - `QuizCache` deliberately uses `shared_preferences` (small catalog, already a
   dependency, test-friendly). Swap to `hive` when the catalog grows, and fold
   resume storage (`quiz_storage.dart`) into the same cache.
-- Server-side grading (Phase 1 follow-up) is still open.
+- [x] **DONE (Phase 6)** Server-side grading (Phase 1/3 follow-up) — see above.
 
 ---
 
@@ -184,10 +185,9 @@ Deleted: `lib/services/{quiz,progress,profile}_service.dart`,
 `lib/screens/{auth,quiz}_screen.dart`, `ROADMAP.md`
 
 ### Follow-ups (later phases)
-- `CODE_WALKTHROUGH.md` still describes the pre-Phase-4 `setState`/`SessionGate`
-  architecture — rewrite it in the next docs pass.
-- Server-side grading (Phase 1/3 follow-up) is still open: questions are still
-  fetched with `is_correct`.
+- [x] **DONE (Phase 6)** `CODE_WALKTHROUGH.md` rewritten for the current
+  architecture.
+- [x] **DONE (Phase 6)** Server-side grading (Phase 1/3 follow-up) — see above.
 - Widget tests use fake repositories; an interface (abstract class) per
   repository would let tests avoid constructing `SupabaseClient` at all.
 - CI only runs `flutter test`; the integration test needs a real test Supabase
@@ -195,18 +195,28 @@ Deleted: `lib/services/{quiz,progress,profile}_service.dart`,
 
 ---
 
-## Phase 6 — Shipping ◻
+## Phase 6 — Shipping ◻ (code done; store submission pending)
 
 **Goal:** a downloadable, store-quality app.
 
-### Tasks
-- [ ] Real Supabase project + proper config (.env, no placeholder defaults)
-- [ ] App icons, splash screen, branding
-- [ ] Android release build (`flutter build apk --release`)
-- [ ] iOS: signing, asset catalog, `flutter build ios`
-- [ ] Versioning + Play Store / App Store listing
-- [ ] Privacy policy + terms (required for store submission)
-- [ ] Frequent release build + smoke test checklist before publishing
+### Done
+- [x] App icons, splash/launch background, branding (`tool/generate_icons.dart`
+      + `flutter_launcher_icons`, brand blue adaptive icons)
+- [x] Android release build: `flutter build apk --release` (56.5 MB, signed
+      with an upload keystore — see README)
+- [x] Versioning: `1.0.0+1`
+- [x] Privacy policy + terms (`PRIVACY_POLICY.md`, `TERMS_OF_SERVICE.md`),
+      linked from the in-app profile screen
+- [x] Deep links for Supabase auth callbacks (Android intent-filter + iOS URL
+      scheme)
+- [x] Server-side grading (get_quizzes / grade_attempt RPCs)
+
+### Tasks (outside this repo / external accounts)
+- [ ] Real Supabase project + `env.json` config (see `env.example.json`)
+- [ ] OAuth client IDs (Google/Apple) per platform in the Supabase dashboard
+- [ ] iOS build: requires macOS + signing + `flutter build ios`
+- [ ] Play Store / App Store listing with screenshots + the legal docs
+- [ ] Frequent release build + smoke-test checklist (see README) before publishing
 
 ### Why
 The final step that turns working code into something people can actually install.
