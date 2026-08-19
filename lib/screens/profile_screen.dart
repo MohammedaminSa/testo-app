@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../core/theme.dart';
 import '../models/models.dart';
 import '../providers/auth_providers.dart';
 import '../providers/message_controller.dart';
 import '../providers/profile_providers.dart';
+
+const _legalBase = 'https://github.com/MohammedaminSa/testo-app/blob/main/';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -45,6 +48,16 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
 
   Future<void> _signOut() async {
     await ref.read(authRepositoryProvider).signOut();
+  }
+
+  Future<void> _openLegal(String fileName) async {
+    final uri = Uri.parse('$_legalBase$fileName');
+    final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!launched) {
+      ref
+          .read(messageControllerProvider.notifier)
+          .show('Could not open the link.');
+    }
   }
 
   @override
@@ -193,6 +206,31 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen> {
                 ),
               ],
             ),
+          ),
+        ),
+        const SizedBox(height: 24),
+        const Text(
+          'Legal',
+          style: TextStyle(fontSize: 13, color: Colors.black54),
+        ),
+        const SizedBox(height: 8),
+        Card(
+          child: Column(
+            children: [
+              ListTile(
+                leading: const Icon(Icons.privacy_tip_outlined),
+                title: const Text('Privacy Policy'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openLegal('PRIVACY_POLICY.md'),
+              ),
+              const Divider(height: 1),
+              ListTile(
+                leading: const Icon(Icons.description_outlined),
+                title: const Text('Terms of Service'),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _openLegal('TERMS_OF_SERVICE.md'),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: 24),
