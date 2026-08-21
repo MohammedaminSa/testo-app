@@ -1,243 +1,69 @@
-# Testo — Phase Roadmap
+# GCSE Ace - Project Roadmap
 
-The full plan to take Testo from a working demo to a real, shippable app.
-Each phase has: **goal → tasks → why it matters**. Check items off as you go.
+## What we're building
+A Flutter mobile app (Android + iOS) for GCSE students with:
+- **Mock exams** - timed, exam-style practice
+- **Previous year papers** - real past papers by subject and year
+- **Department-based materials** - reading/study notes organized by department (Maths, English, Science...)
+- **AI explanations** - a clear explanation for every question you get wrong
 
-```text
-PHASE 1  Backend & data        ✅ DONE
-PHASE 2  Auth & onboarding     ✅ DONE
-PHASE 3  Quiz engine          ✅ DONE
-PHASE 4  Architecture         ✅ DONE
-PHASE 5  Quality & testing    ✅ DONE
-PHASE 6  Shipping             ◻ (code done; store submission pending)
+## Tech decisions (locked in)
+| Layer | Choice |
+|-------|--------|
+| App | Flutter (Dart) |
+| Backend | Supabase (auth, database, edge functions) |
+| State management | Riverpod |
+| Navigation | go_router |
+| AI | Supabase Edge Function calling an AI provider |
+
+## The database (conceptual - designed together in Phase 3)
+```
+departments   -> subject areas (Maths, Science, English...)
+papers        -> exams & past papers (subject, year, duration, marks)
+questions     -> each question in a paper (text, marks, answer, explanation)
+options       -> multiple-choice answers for a question
+materials     -> study/reading notes tied to a department
+profiles      -> student accounts
+attempts      -> one student's run of one paper (answers, score, time)
 ```
 
----
+## The screens (built in phases below)
+1. Sign in / Sign up
+2. Home dashboard
+3. Browse papers (filter by department/year)
+4. Take an exam (timer, questions, submit)
+5. Results + review
+6. Review with AI explanations
+7. Study materials (by department)
+8. Profile & progress history
 
-## Phase 1 — Backend & data ✅ DONE
+## Build phases (each phase = learn concept -> write code -> verify -> confirm before moving on)
 
-**Goal:** quiz content lives in the database instead of being hardcoded in Dart.
+| Phase | What we build | What you'll learn |
+|-------|---------------|-------------------|
+| 0 | Roadmap & plan | *(current phase)* |
+| 1 | Fresh Flutter project | Understand the folder structure, `pubspec.yaml`, generated files - no app code yet, we only *look* and understand |
+| 2 | App skeleton | Theme, colors, first screen, app shell with bottom navigation |
+| 3 | Database schema | Design tables in Supabase + SQL, then apply it |
+| 4 | Auth | Sign up, sign in, logout, session handling, auth-guarded routing |
+| 5 | Data layer | Riverpod providers + fetching papers/questions from Supabase |
+| 6 | Browse & paper detail | List departments/papers, view paper info, start an exam |
+| 7 | Exam engine | Question flow, timer, auto-submit, local grading |
+| 8 | Results & review | Score screen, review every answer |
+| 9 | AI explanations | Supabase Edge Function that generates explanations |
+| 10 | Study materials | Department-based reading content |
+| 11 | Progress tracking | Attempt history, stats on profile |
+| 12 | Polish & ship | Loading/error states, app icon, testing, release build |
 
-### Done
-- [x] `supabase/schema.sql` — added `quizzes`, `questions`, `options` tables
-- [x] `supabase/seed.sql` — seeded the two sample quizzes
-- [x] `lib/services/quiz_service.dart` — fetches quizzes + questions + options in one query
-- [x] `lib/models/models.dart` — `fromMap` factories for `Question` / `Quiz`
-- [x] `lib/screens/home_screen.dart` — loads quizzes from cloud, error/retry card, demo fallback when unconfigured
+## How each phase works
+1. I explain the concept in plain language
+2. We write the code together file by file - you read each file with me
+3. We run `flutter analyze` + run the app to verify
+4. You ask questions until it clicks
+5. We move on
 
-### Files touched
-`supabase/schema.sql`, `supabase/seed.sql`, `lib/services/quiz_service.dart`,
-`lib/models/models.dart`, `lib/screens/home_screen.dart`, `README.md`
-
-### Known catch (fix in a later phase)
-- [x] **FIXED (Phase 6)** `is_correct` is now never sent to the client. The
-  `get_quizzes` RPC returns questions **without** the correct answer, and
-  `grade_attempt` grades submissions server-side.
-
----
-
-## Phase 2 — Auth & onboarding ✅ DONE
-
-**Goal:** users can sign up/in/professionally and have a profile.
-
-### Done
-- [x] Email confirmation flow (verify account before use)
-- [x] Forgot/reset password screen
-- [x] `profiles` table tied to `auth.users` (name, avatar, preferences)
-  - `supabase/schema.sql` now creates `public.profiles` with an
-    `on_auth_user_created` trigger that inserts a row on signup.
-- [x] Google / Apple OAuth button
-- [x] Splash/loading state while checking session (instead of flashing AuthScreen)
-  - `SessionGate` in `lib/main.dart` reads the persisted session synchronously.
-- [x] Form polish: confirm-password field, "already registered?" hints, name on signup
-
-### Files touched
-`supabase/schema.sql`, `lib/main.dart`, `lib/screens/auth_screen.dart`,
-`lib/screens/forgot_password_screen.dart`, `lib/screens/profile_screen.dart`,
-`lib/screens/splash_screen.dart`, `lib/services/profile_service.dart`,
-`lib/models/models.dart`, `lib/screens/home_screen.dart`, `README.md`
-
-### Follow-ups (later phases)
-- Password-reset **deep link handling** needs the platform URL scheme wired up
-  (see README) to let the reset email reopen the app directly.
-- OAuth buttons need the provider client IDs configured per platform.
-
----
-
-## Phase 3 — Quiz engine ✅ DONE
-
-**Goal:** quizzes feel like real exam prep, not a fixed linear list.
-
-### Done
-- [x] **Randomize** question order per attempt — each attempt builds a shuffled
-  "paper"; the order + every answer is stored on the attempt (`questions_order`,
-  `answers` jsonb) so results are fair and reviewable.
-- [x] **Timed mode** — optional per-question countdown (from
-  `quizzes.time_limit_seconds`), red warning under 5s, auto-submit on timeout
-  (records "no answer").
-- [x] **Review screen** — after a quiz the app shows a full breakdown: score,
-  each question, your answer vs the correct one, and the explanation
-  (`lib/screens/review_screen.dart`).
-- [x] **Weak-area tracking** — each question's `topic` + correctness is recorded;
-  review screen and home stats card both surface "Topics to review".
-- [x] Question banks + fixed-length papers — `quizzes.paper_size` lets a bank
-  serve a random N-question paper from a larger pool.
-- [x] **Resume an unfinished quiz** — in-progress papers persist locally via
-  `shared_preferences` (`lib/services/quiz_storage.dart`); reopening offers
-  Resume / Start over.
-- [x] Content metadata in DB — `category`, `difficulty`, `tags` on quizzes +
-  difficulty filter chips and metadata badges on the home screen.
-
-### Files touched
-`supabase/schema.sql`, `supabase/seed.sql`, `lib/models/models.dart`,
-`lib/services/quiz_storage.dart` (new), `lib/services/progress_service.dart`,
-`lib/screens/quiz_screen.dart`, `lib/screens/review_screen.dart` (new),
-`lib/screens/home_screen.dart`, `lib/data/demo_quizzes.dart`,
-`test/models_test.dart` (new), `pubspec.yaml`, `README.md`
-
-### Follow-ups (later phases)
-- [x] **DONE (Phase 6)** Server-side grading: questions no longer fetch
-  `is_correct`; `get_quizzes()` / `grade_attempt()` RPCs (see `supabase/schema.sql`).
-- Resume persistence uses `shared_preferences`; Phase 4's offline cache can
-  absorb this and add "current attempt" to the home screen.
-
----
-
-## Phase 4 — Architecture & state management ✅ DONE
-
-**Goal:** replace the fragile "every screen manages its own `setState`" pattern.
-
-### Done
-- [x] **Riverpod** introduced for all state (auth, quiz catalog, progress, profile).
-- [x] **Repositories** (`lib/repositories/`) own every Supabase call — auth, quiz,
-  progress, profile. Screens never touch the database.
-- [x] **`go_router`** with **auth guards**: `lib/core/router.dart` redirects
-  signed-out users to `/auth` and signed-in users away from it, reacting live
-  to the auth stream. `/quiz` + `/review` pass objects via `extra`.
-- [x] **Central error handling + load states**: one `MessageHost` renders all
-  snackbars from a single `messageControllerProvider`; screens draw
-  loading/error/data straight from `AsyncValue` instead of scattered
-  `catch (_)` + booleans.
-- [x] **Offline support**: `QuizCache` (`lib/services/quiz_cache.dart`) persists
-  the catalog; `QuizListNotifier` shows the cache instantly, refreshes in the
-  background, and falls back to it when offline.
-- [x] **DI**: the global `supabase` getter is now only touched by
-  `supabaseProvider`; every repository receives its client through it.
-- [x] `Quiz`/`Question` gained `toMap()` so cached data round-trips.
-
-### Files touched
-`pubspec.yaml`, `lib/main.dart`, `lib/core/router.dart` (new),
-`lib/repositories/{auth,quiz,progress,profile}_repository.dart` (new),
-`lib/providers/{supabase,auth,quiz,progress,profile}_providers.dart` (new),
-`lib/providers/message_controller.dart` (new),
-`lib/services/quiz_cache.dart` (new),
-`lib/screens/{auth,forgot_password,home,quiz,history,profile,review}_screen.dart`,
-`lib/models/models.dart`, `test/repositories_test.dart` (new)
-Deleted: `lib/services/{quiz,progress,profile}_service.dart`,
-`lib/screens/splash_screen.dart`
-
-### Follow-ups (later phases)
-- [x] **DONE (Phase 6)** `CODE_WALKTHROUGH.md` rewritten for the current
-  architecture.
-- `QuizCache` deliberately uses `shared_preferences` (small catalog, already a
-  dependency, test-friendly). Swap to `hive` when the catalog grows, and fold
-  resume storage (`quiz_storage.dart`) into the same cache.
-- [x] **DONE (Phase 6)** Server-side grading (Phase 1/3 follow-up) — see above.
-
----
-
-## Phase 5 — Quality & testing ✅ DONE
-
-**Goal:** the app is verifiably correct and safe to change.
-
-### Done
-- [x] **Unit tests**: `QuizCache` round-trip (mock shared_preferences) and
-  `QuizListNotifier` — demo fallback, repository fetch + cache write, and
-  offline-cache fallback when the network fails
-  (`test/quiz_cache_test.dart`, `test/quiz_list_notifier_test.dart`).
-- [x] **Widget tests** with fake repositories (`test/helpers/fakes.dart`):
-  - `AuthScreen`: empty-form validation, successful sign-in, failure snackbar
-  - `QuizScreen`: answer → explanation → finish saves the attempt + navigates
-    to review (100% and 0% score paths)
-  - `HomeScreen`: quiz cards + stats, loading spinner, error + retry, tap→quiz
-- [x] **Integration test**: sign in → take a quiz → see it in history against a
-  real test Supabase project (`integration_test/app_test.dart`). Not run by
-  `flutter test`; runs on a device with `SUPABASE_URL`/`ANON_KEY`/
-  `TEST_EMAIL`/`TEST_PASSWORD` dart-defines.
-- [x] **CI in GitHub Actions**: `.github/workflows/ci.yml` runs
-  `flutter analyze` + `flutter test` on every push/PR.
-- [x] **Analytics (PostHog)** behind a dart-define (`POSTHOG_API_KEY`):
-  `AnalyticsService` (`lib/services/analytics_service.dart`) tracks
-  `sign_in`, `sign_up`, `quiz_started`, `quiz_completed`; no-op when
-  unconfigured.
-- [x] **Crash & error reporting (Sentry)** behind a dart-define (`SENTRY_DSN`):
-  `initCrashReporting()` in `lib/services/crash_reporter.dart`.
-
-### Files touched
-`pubspec.yaml`, `.github/workflows/ci.yml` (new),
-`integration_test/app_test.dart` (new),
-`test/helpers/fakes.dart` (new),
-`test/{auth_screen,quiz_screen,home_screen}_test.dart` (new),
-`test/{quiz_cache,quiz_list_notifier}_test.dart` (new),
-`lib/core/config.dart`, `lib/main.dart`,
-`lib/providers/{quiz,observability}_providers.dart`,
-`lib/services/{analytics_service,crash_reporter}.dart` (new),
-`lib/screens/{auth,quiz}_screen.dart`, `ROADMAP.md`
-
-### Follow-ups (later phases)
-- [x] **DONE (Phase 6)** `CODE_WALKTHROUGH.md` rewritten for the current
-  architecture.
-- [x] **DONE (Phase 6)** Server-side grading (Phase 1/3 follow-up) — see above.
-- Widget tests use fake repositories; an interface (abstract class) per
-  repository would let tests avoid constructing `SupabaseClient` at all.
-- CI only runs `flutter test`; the integration test needs a real test Supabase
-  project before it can join CI.
-
----
-
-## Phase 6 — Shipping ◻ (code done; store submission pending)
-
-**Goal:** a downloadable, store-quality app.
-
-### Done
-- [x] App icons, splash/launch background, branding (`tool/generate_icons.dart`
-      + `flutter_launcher_icons`, brand blue adaptive icons)
-- [x] Android release build: `flutter build apk --release` (56.5 MB, signed
-      with an upload keystore — see README)
-- [x] Versioning: `1.0.0+1`
-- [x] Privacy policy + terms (`PRIVACY_POLICY.md`, `TERMS_OF_SERVICE.md`),
-      linked from the in-app profile screen
-- [x] Deep links for Supabase auth callbacks (Android intent-filter + iOS URL
-      scheme)
-- [x] Server-side grading (get_quizzes / grade_attempt RPCs)
-
-### Tasks (outside this repo / external accounts)
-- [ ] Real Supabase project + `env.json` config (see `env.example.json`)
-- [ ] OAuth client IDs (Google/Apple) per platform in the Supabase dashboard
-- [ ] iOS build: requires macOS + signing + `flutter build ios`
-- [ ] Play Store / App Store listing with screenshots + the legal docs
-- [ ] Frequent release build + smoke-test checklist (see README) before publishing
-
-### Why
-The final step that turns working code into something people can actually install.
-
----
-
-## Suggested order & dependencies
-
-```text
-Phase 3 (quiz engine) ──┐
-                         ├──► Phase 4 (architecture) ──► Phase 5 (quality) ──► Phase 6 (ship)
-Phase 2 (auth) ─────────┘
+## Backup
+The old app is preserved on the git branch `backup-testo`:
 ```
-
-- Phase 2 & 3 are independent — either first.
-- Do **Phase 4 before adding more features** past Phase 3, or you'll pay for it with refactoring pain.
-- Phase 5 & 6 must come last.
-
-## Quick checklist before each phase
-
-- [ ] Read `CODE_WALKTHROUGH.md` to refresh how the app currently works
-- [ ] Create a branch: `git checkout -b phase-N-name`
-- [ ] Commit each file separately (like the current repo style)
-- [ ] Run `flutter analyze` and `flutter test` — keep them green
+git checkout backup-testo
+```

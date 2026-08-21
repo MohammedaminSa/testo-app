@@ -1,3 +1,0 @@
-@echo off
-echo Starting Testo with Supabase configuration...
-flutter run --dart-define-from-file=env.json
