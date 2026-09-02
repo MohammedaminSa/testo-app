@@ -3,7 +3,10 @@ import 'package:go_router/go_router.dart';
 
 import '../screens/auth/sign_in_screen.dart';
 import '../screens/auth/sign_up_screen.dart';
+import '../screens/department_papers_screen.dart';
+import '../screens/paper_detail_screen.dart';
 import '../providers/auth_provider.dart';
+import '../providers/data_provider.dart';
 import '../services/auth_service.dart';
 import '../shell/app_shell.dart';
 
@@ -37,6 +40,25 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/signup',
         builder: (context, state) => const SignUpScreen(),
+      ),
+      GoRoute(
+        path: '/department/:departmentId',
+        builder: (context, state) {
+          final departmentId = state.pathParameters['departmentId']!;
+          final departments = ref.read(departmentsProvider).value ?? [];
+          final department = departments.firstWhere(
+            (d) => d.id == departmentId,
+            orElse: () => throw Exception('Department not found'),
+          );
+          return DepartmentPapersScreen(department: department);
+        },
+      ),
+      GoRoute(
+        path: '/paper/:paperId',
+        builder: (context, state) {
+          final paperId = state.pathParameters['paperId']!;
+          return PaperDetailScreen(paperId: paperId);
+        },
       ),
     ],
   );
