@@ -10,8 +10,9 @@ final departmentsProvider = FutureProvider<List<Department>>((ref) async {
   return DataService.instance.getDepartments();
 });
 
-final papersProvider = FutureProvider<List<Paper>>((ref) async {
-  return DataService.instance.getPapers();
+final papersProvider =
+    FutureProvider.family<List<Paper>, String?>((ref, departmentId) async {
+  return DataService.instance.getPapers(departmentId: departmentId);
 });
 
 final questionsProvider =
