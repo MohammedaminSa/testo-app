@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../providers/data_provider.dart';
 
@@ -29,6 +30,9 @@ class PapersScreen extends ConsumerWidget {
                   title: Text(dept.name),
                   subtitle: Text(dept.description ?? ''),
                   trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    context.push('/department/${dept.id}');
+                  },
                 ),
               );
             },
