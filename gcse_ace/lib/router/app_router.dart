@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../screens/auth/sign_in_screen.dart';
 import '../screens/auth/sign_up_screen.dart';
 import '../screens/department_papers_screen.dart';
+import '../screens/exam_screen.dart';
 import '../screens/paper_detail_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
@@ -58,6 +59,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final paperId = state.pathParameters['paperId']!;
           return PaperDetailScreen(paperId: paperId);
+        },
+      ),
+      GoRoute(
+        path: '/exam/:paperId',
+        builder: (context, state) {
+          final paperId = state.pathParameters['paperId']!;
+          return ExamScreen(paperId: paperId);
         },
       ),
     ],
