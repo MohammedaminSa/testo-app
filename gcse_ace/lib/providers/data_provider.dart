@@ -24,3 +24,8 @@ final optionsProvider =
     FutureProvider.family<List<Option>, String>((ref, questionId) async {
   return DataService.instance.getOptions(questionId);
 });
+
+final questionsWithOptionsProvider =
+    FutureProvider.family<List<Question>, String>((ref, paperId) async {
+  return DataService.instance.getQuestionsWithOptions(paperId);
+});
