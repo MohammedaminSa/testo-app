@@ -60,4 +60,24 @@ class DataService {
     }
     return map;
   }
+
+  Future<List<Question>> getQuestionsWithOptions(String paperId) async {
+    final questions = await getQuestions(paperId);
+    final questionIds = questions.map((q) => q.id).toList();
+    final optionsMap = await getOptionsForQuestions(questionIds);
+
+    return questions.map((q) {
+      return Question(
+        id: q.id,
+        paperId: q.paperId,
+        orderNumber: q.orderNumber,
+        text: q.text,
+        marks: q.marks,
+        questionType: q.questionType,
+        correctAnswer: q.correctAnswer,
+        explanation: q.explanation,
+        options: optionsMap[q.id] ?? [],
+      );
+    }).toList();
+  }
 }
