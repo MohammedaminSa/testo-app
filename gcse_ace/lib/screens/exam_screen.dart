@@ -263,7 +263,14 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
                 ),
               ),
               const SizedBox(height: 32),
-              FilledButton(
+              FilledButton.icon(
+                onPressed: () =>
+                    context.push('/review/${widget.paper.id}'),
+                icon: const Icon(Icons.rate_review),
+                label: const Text('Review Answers'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton(
                 onPressed: () => context.go('/'),
                 child: const Text('Back to Home'),
               ),
