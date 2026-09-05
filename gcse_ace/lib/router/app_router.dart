@@ -6,6 +6,7 @@ import '../screens/auth/sign_up_screen.dart';
 import '../screens/department_papers_screen.dart';
 import '../screens/exam_screen.dart';
 import '../screens/paper_detail_screen.dart';
+import '../screens/review_screen.dart';
 import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../services/auth_service.dart';
@@ -66,6 +67,13 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) {
           final paperId = state.pathParameters['paperId']!;
           return ExamScreen(paperId: paperId);
+        },
+      ),
+      GoRoute(
+        path: '/review/:paperId',
+        builder: (context, state) {
+          final paperId = state.pathParameters['paperId']!;
+          return ReviewScreen(paperId: paperId);
         },
       ),
     ],
