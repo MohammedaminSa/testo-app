@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../models/question.dart';
 import '../providers/data_provider.dart';
 import '../providers/exam_provider.dart';
+import '../services/ai_service.dart';
 
 class ReviewScreen extends ConsumerWidget {
   const ReviewScreen({super.key, required this.paperId});
@@ -158,7 +159,7 @@ class _ReviewContent extends StatelessWidget {
   }
 }
 
-class _QuestionReviewCard extends StatelessWidget {
+class _QuestionReviewCard extends StatefulWidget {
   const _QuestionReviewCard({
     required this.questionNumber,
     required this.question,
@@ -170,6 +171,59 @@ class _QuestionReviewCard extends StatelessWidget {
   final Question question;
   final String? selectedOptionId;
   final bool isCorrect;
+
+  @override
+  State<_QuestionReviewCard> createState() => _QuestionReviewCardState();
+}
+
+class _QuestionReviewCardState extends State<_QuestionReviewCard> {
+  String? _explanation;
+  bool _loadingExplanation = false;
+  String? _explanationError;
+
+  String? get _studentAnswerText {
+    if (widget.selectedOptionId == null || widget.question.options == null) {
+      return null;
+    }
+    final selected = widget.question.options!.where(
+      (o) => o.id == widget.selectedOptionId,
+    );
+    return selected.isNotEmpty ? selected.first.text : null;
+  }
+
+  String? get _correctAnswerText {
+    if (widget.question.options == null) return null;
+    final correct = widget.question.options!.where((o) => o.isCorrect);
+    return correct.isNotEmpty ? correct.first.text : null;
+  }
+
+  Future<void> _fetchExplanation() async {
+    setState(() {
+      _loadingExplanation = true;
+      _explanationError = null;
+    });
+
+    try {
+      final explanation = await AiService.instance.getExplanation(
+        question: widget.question.text,
+        correctAnswer: _correctAnswerText ?? widget.question.correctAnswer ?? '',
+        studentAnswer: _studentAnswerText,
+      );
+      if (mounted) {
+        setState(() {
+          _explanation = explanation;
+          _loadingExplanation = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _explanationError = 'Failed to load explanation. Please try again.';
+          _loadingExplanation = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -189,11 +243,11 @@ class _QuestionReviewCard extends StatelessWidget {
                   height: 28,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: isCorrect ? Colors.green : colorScheme.error,
+                    color: widget.isCorrect ? Colors.green : colorScheme.error,
                   ),
                   child: Center(
                     child: Icon(
-                      isCorrect ? Icons.check : Icons.close,
+                      widget.isCorrect ? Icons.check : Icons.close,
                       size: 16,
                       color: Colors.white,
                     ),
@@ -202,7 +256,7 @@ class _QuestionReviewCard extends StatelessWidget {
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    'Q$questionNumber  (${question.marks} ${question.marks == 1 ? 'mark' : 'marks'})',
+                    'Q${widget.questionNumber}  (${widget.question.marks} ${widget.question.marks == 1 ? 'mark' : 'marks'})',
                     style: Theme.of(context).textTheme.titleSmall?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -212,13 +266,13 @@ class _QuestionReviewCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Text(
-              question.text,
+              widget.question.text,
               style: Theme.of(context).textTheme.bodyLarge,
             ),
-            if (question.options != null) ...[
+            if (widget.question.options != null) ...[
               const SizedBox(height: 12),
-              ...question.options!.map((option) {
-                final isSelected = option.id == selectedOptionId;
+              ...widget.question.options!.map((option) {
+                final isSelected = option.id == widget.selectedOptionId;
                 final isCorrectOption = option.isCorrect;
 
                 Color bgColor;
@@ -296,7 +350,7 @@ class _QuestionReviewCard extends StatelessWidget {
                 );
               }),
             ],
-            if (!isCorrect && selectedOptionId == null) ...[
+            if (!widget.isCorrect && widget.selectedOptionId == null) ...[
               const SizedBox(height: 8),
               Text(
                 'Not answered',
@@ -305,6 +359,56 @@ class _QuestionReviewCard extends StatelessWidget {
                   fontStyle: FontStyle.italic,
                 ),
               ),
+            ],
+            if (!widget.isCorrect) ...[
+              const SizedBox(height: 12),
+              if (_explanation != null)
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primaryContainer.withAlpha(80),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: colorScheme.primary.withAlpha(60)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(Icons.auto_awesome,
+                              size: 16, color: colorScheme.primary),
+                          const SizedBox(width: 6),
+                          Text(
+                            'AI Explanation',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: colorScheme.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(_explanation!),
+                    ],
+                  ),
+                )
+              else if (_loadingExplanation)
+                const Center(child: CircularProgressIndicator())
+              else ...[
+                if (_explanationError != null) ...[
+                  Text(
+                    _explanationError!,
+                    style: TextStyle(color: colorScheme.error, fontSize: 13),
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                OutlinedButton.icon(
+                  onPressed: _fetchExplanation,
+                  icon: const Icon(Icons.auto_awesome, size: 18),
+                  label: const Text('Explain this'),
+                ),
+              ],
             ],
           ],
         ),
