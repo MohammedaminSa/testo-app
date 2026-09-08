@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/department.dart';
+import '../models/material.dart';
 import '../models/paper.dart';
 import '../models/question.dart';
 import '../models/option.dart';
@@ -28,4 +29,9 @@ final optionsProvider =
 final questionsWithOptionsProvider =
     FutureProvider.family<List<Question>, String>((ref, paperId) async {
   return DataService.instance.getQuestionsWithOptions(paperId);
+});
+
+final materialsProvider =
+    FutureProvider.family<List<StudyMaterial>, String?>((ref, departmentId) async {
+  return DataService.instance.getMaterials(departmentId: departmentId);
 });
