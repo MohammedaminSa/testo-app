@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/attempt.dart';
 import '../models/department.dart';
 import '../models/material.dart';
 import '../models/paper.dart';
@@ -91,5 +92,14 @@ class DataService {
     return (data as List)
         .map((json) => StudyMaterial.fromJson(json))
         .toList();
+  }
+
+  Future<List<Attempt>> getAttempts(String userId) async {
+    final data = await _client
+        .from('attempts')
+        .select('*, papers(title, departments(name))')
+        .eq('user_id', userId)
+        .order('created_at', ascending: false);
+    return (data as List).map((json) => Attempt.fromJson(json)).toList();
   }
 }
