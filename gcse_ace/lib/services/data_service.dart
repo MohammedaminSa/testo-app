@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/department.dart';
+import '../models/material.dart';
 import '../models/paper.dart';
 import '../models/question.dart';
 import '../models/option.dart';
@@ -79,5 +80,16 @@ class DataService {
         options: optionsMap[q.id] ?? [],
       );
     }).toList();
+  }
+
+  Future<List<StudyMaterial>> getMaterials({String? departmentId}) async {
+    var query = _client.from('materials').select();
+    if (departmentId != null) {
+      query = query.eq('department_id', departmentId);
+    }
+    final data = await query.order('created_at', ascending: false);
+    return (data as List)
+        .map((json) => StudyMaterial.fromJson(json))
+        .toList();
   }
 }
