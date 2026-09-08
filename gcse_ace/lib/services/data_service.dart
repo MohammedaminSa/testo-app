@@ -89,9 +89,7 @@ class DataService {
       query = query.eq('department_id', departmentId);
     }
     final data = await query.order('created_at', ascending: false);
-    return (data as List)
-        .map((json) => StudyMaterial.fromJson(json))
-        .toList();
+    return (data as List).map((json) => StudyMaterial.fromJson(json)).toList();
   }
 
   Future<List<Attempt>> getAttempts(String userId) async {
@@ -101,5 +99,29 @@ class DataService {
         .eq('user_id', userId)
         .order('created_at', ascending: false);
     return (data as List).map((json) => Attempt.fromJson(json)).toList();
+  }
+
+  Future<String> saveAttempt({
+    required String userId,
+    required String paperId,
+    required int score,
+    required int totalMarks,
+    required Map<String, String> answers,
+  }) async {
+    final result = await _client
+        .from('attempts')
+        .insert({
+          'user_id': userId,
+          'paper_id': paperId,
+          'score': score,
+          'total_marks': totalMarks,
+          'answers': answers,
+          'started_at': DateTime.now().toIso8601String(),
+          'submitted_at': DateTime.now().toIso8601String(),
+        })
+        .select()
+        .single();
+
+    return result['id'] as String;
   }
 }

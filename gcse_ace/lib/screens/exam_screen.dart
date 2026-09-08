@@ -3,8 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../models/paper.dart';
+import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../providers/exam_provider.dart';
+import '../services/data_service.dart';
 
 class ExamScreen extends ConsumerWidget {
   const ExamScreen({super.key, required this.paperId});
@@ -16,12 +18,9 @@ class ExamScreen extends ConsumerWidget {
     final papersAsync = ref.watch(papersProvider(null));
 
     return papersAsync.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Scaffold(
-        body: Center(child: Text('Error: $e')),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
       data: (papers) {
         final paper = papers.firstWhere(
           (p) => p.id == paperId,
@@ -44,18 +43,51 @@ class _ExamContent extends ConsumerStatefulWidget {
 
 class _ExamContentState extends ConsumerState<_ExamContent> {
   bool _configured = false;
+  bool _attemptSaved = false;
+
+  Future<void> _saveAttempt(ExamState examState) async {
+    if (_attemptSaved) return; // Already saved
+
+    try {
+      final userAsync = ref.read(authStateProvider);
+      final user = userAsync.value;
+
+      if (user == null) return;
+
+      final score = examState.calculateScore();
+      final totalMarks = examState.questions.fold<int>(
+        0,
+        (sum, q) => sum + q.marks,
+      );
+
+      await DataService.instance.saveAttempt(
+        userId: user.id,
+        paperId: widget.paper.id,
+        score: score,
+        totalMarks: totalMarks,
+        answers: examState.answers,
+      );
+
+      _attemptSaved = true;
+
+      // Refresh attempts list
+      ref.invalidate(attemptsProvider);
+    } catch (e) {
+      // Silent fail - don't block user from seeing results
+      debugPrint('Failed to save attempt: $e');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final questionsAsync = ref.watch(questionsWithOptionsProvider(widget.paper.id));
+    final questionsAsync = ref.watch(
+      questionsWithOptionsProvider(widget.paper.id),
+    );
 
     return questionsAsync.when(
-      loading: () => const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      ),
-      error: (e, _) => Scaffold(
-        body: Center(child: Text('Error: $e')),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
       data: (questions) {
         final examController = ref.read(examProvider.notifier);
 
@@ -100,9 +132,7 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
       child: Scaffold(
         appBar: AppBar(
           title: Text(widget.paper.title),
-          actions: [
-            _TimerBadge(remainingSeconds: examState.remainingSeconds),
-          ],
+          actions: [_TimerBadge(remainingSeconds: examState.remainingSeconds)],
         ),
         body: Column(
           children: [
@@ -219,6 +249,11 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
     ExamState examState,
     ExamController examController,
   ) {
+    // Save attempt to database
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _saveAttempt(examState);
+    });
+
     final score = examState.calculateScore();
     final totalMarks = examState.questions.fold<int>(
       0,
@@ -258,14 +293,13 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
               const SizedBox(height: 8),
               Text(
                 '$percentage%',
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                  color: colorScheme.primary,
-                ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(color: colorScheme.primary),
               ),
               const SizedBox(height: 32),
               FilledButton.icon(
-                onPressed: () =>
-                    context.push('/review/${widget.paper.id}'),
+                onPressed: () => context.push('/review/${widget.paper.id}'),
                 icon: const Icon(Icons.rate_review),
                 label: const Text('Review Answers'),
               ),
@@ -435,11 +469,9 @@ class _QuestionDots extends StatelessWidget {
               color: isCurrent
                   ? colorScheme.primary
                   : isAnswered
-                      ? colorScheme.primary.withAlpha(100)
-                      : colorScheme.surfaceContainerHighest,
-              border: isCurrent
-                  ? null
-                  : Border.all(color: colorScheme.outline),
+                  ? colorScheme.primary.withAlpha(100)
+                  : colorScheme.surfaceContainerHighest,
+              border: isCurrent ? null : Border.all(color: colorScheme.outline),
             ),
             child: Center(
               child: Text(
@@ -449,8 +481,7 @@ class _QuestionDots extends StatelessWidget {
                   color: isCurrent
                       ? colorScheme.onPrimary
                       : colorScheme.onSurface,
-                  fontWeight:
-                      isCurrent ? FontWeight.bold : FontWeight.normal,
+                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
                 ),
               ),
             ),
