@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../models/attempt.dart';
 import '../models/department.dart';
 import '../models/material.dart';
 import '../models/paper.dart';
@@ -34,4 +35,9 @@ final questionsWithOptionsProvider =
 final materialsProvider =
     FutureProvider.family<List<StudyMaterial>, String?>((ref, departmentId) async {
   return DataService.instance.getMaterials(departmentId: departmentId);
+});
+
+final attemptsProvider =
+    FutureProvider.family<List<Attempt>, String>((ref, userId) async {
+  return DataService.instance.getAttempts(userId);
 });
