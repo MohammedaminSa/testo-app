@@ -7,6 +7,13 @@ import '../providers/auth_provider.dart';
 import '../providers/data_provider.dart';
 import '../providers/exam_provider.dart';
 import '../services/data_service.dart';
+import '../theme/app_colors.dart';
+import '../widgets/app_scaffold.dart';
+import '../widgets/empty_state.dart';
+import '../widgets/glass_app_bar.dart';
+import '../widgets/glass_card.dart';
+import '../widgets/gradient_button.dart';
+import '../widgets/score_ring.dart';
 
 class ExamScreen extends ConsumerWidget {
   const ExamScreen({super.key, required this.paperId});
@@ -19,8 +26,15 @@ class ExamScreen extends ConsumerWidget {
 
     return papersAsync.when(
       loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
+          const AppScaffold(body: LoadingState(label: 'Loading exam...')),
+      error: (e, _) => const AppScaffold(
+        body: EmptyState(
+          icon: Icons.wifi_off_rounded,
+          title: 'Could not load the exam',
+          subtitle: 'Check your connection and try again.',
+          gradient: AppColors.ember,
+        ),
+      ),
       data: (papers) {
         final paper = papers.firstWhere(
           (p) => p.id == paperId,
@@ -86,8 +100,15 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
 
     return questionsAsync.when(
       loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, _) => Scaffold(body: Center(child: Text('Error: $e'))),
+          const AppScaffold(body: LoadingState(label: 'Loading questions...')),
+      error: (e, _) => AppScaffold(
+        body: EmptyState(
+          icon: Icons.wifi_off_rounded,
+          title: 'Could not load questions',
+          subtitle: '$e',
+          gradient: AppColors.ember,
+        ),
+      ),
       data: (questions) {
         final examController = ref.read(examProvider.notifier);
 
@@ -118,9 +139,9 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
     ExamState examState,
     ExamController examController,
   ) {
+    final theme = Theme.of(context);
     final question = examState.currentQuestion;
     final selectedOptionId = examState.answers[question.id];
-    final colorScheme = Theme.of(context).colorScheme;
 
     return PopScope(
       canPop: false,
@@ -129,117 +150,105 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
           _showExitDialog(context, examController);
         }
       },
-      child: Scaffold(
-        appBar: AppBar(
-          title: Text(widget.paper.title),
-          actions: [_TimerBadge(remainingSeconds: examState.remainingSeconds)],
+      child: AppScaffold(
+        appBar: GlassAppBar(
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                widget.paper.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: theme.textTheme.titleMedium,
+              ),
+              Text(
+                'Question ${examState.currentIndex + 1} of ${examState.totalQuestions}',
+                style: theme.textTheme.bodySmall,
+              ),
+            ],
+          ),
+          actions: [
+            _TimerBadge(remainingSeconds: examState.remainingSeconds),
+            const SizedBox(width: 16),
+          ],
         ),
         body: Column(
           children: [
-            _QuestionProgress(
+            _ProgressStrip(
               current: examState.currentIndex + 1,
               total: examState.totalQuestions,
             ),
             Expanded(
               child: ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
                 children: [
-                  Text(
-                    'Question ${examState.currentIndex + 1} of ${examState.totalQuestions}',
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: colorScheme.primary,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '(${question.marks} ${question.marks == 1 ? 'mark' : 'marks'})',
-                    style: Theme.of(context).textTheme.bodySmall,
+                  Row(
+                    children: [
+                      MetaChip(
+                        icon: Icons.quiz_outlined,
+                        label:
+                            'Question ${examState.currentIndex + 1} of ${examState.totalQuestions}',
+                      ),
+                      const SizedBox(width: 8),
+                      MetaChip(
+                        icon: Icons.stars_rounded,
+                        label:
+                            '${question.marks} ${question.marks == 1 ? 'mark' : 'marks'}',
+                        color: AppColors.secondary,
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
-                  Text(
-                    question.text,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  const SizedBox(height: 24),
-                  if (question.options != null)
-                    RadioGroup<String>(
-                      onChanged: (value) {
-                        if (value != null) {
-                          examController.selectAnswer(question.id, value);
-                        }
-                      },
-                      child: Column(
-                        children: question.options!.map((option) {
-                          final isSelected = selectedOptionId == option.id;
-                          return Card(
-                            color: isSelected
-                                ? colorScheme.primaryContainer
-                                : null,
-                            child: RadioListTile<String>(
-                              value: option.id,
-                              title: Text('${option.letter}. ${option.text}'),
-                              activeColor: colorScheme.primary,
+                  GlassCard(
+                    radius: 24,
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          question.text,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            height: 1.45,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (question.options != null) ...[
+                          const SizedBox(height: 22),
+                          RadioGroup<String>(
+                            onChanged: (value) {
+                              if (value != null) {
+                                examController.selectAnswer(question.id, value);
+                              }
+                            },
+                            child: Column(
+                              children: [
+                                for (final option in question.options!)
+                                  _OptionTile(
+                                    letter: option.letter,
+                                    text: option.text,
+                                    selected:
+                                        selectedOptionId == option.id,
+                                  ),
+                              ],
                             ),
-                          );
-                        }).toList(),
-                      ),
+                          ),
+                        ],
+                      ],
                     ),
+                  ),
                 ],
               ),
             ),
-            _buildNavigationBar(context, examState, examController),
+            _ExamDock(
+              examState: examState,
+              onPrevious: examController.previousQuestion,
+              onNext: examController.nextQuestion,
+              onJump: examController.goToQuestion,
+              onSubmit: () => _showSubmitDialog(context, examController),
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildNavigationBar(
-    BuildContext context,
-    ExamState examState,
-    ExamController examController,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surface,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withAlpha(25),
-            blurRadius: 4,
-            offset: const Offset(0, -2),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          if (!examState.isFirstQuestion)
-            OutlinedButton(
-              onPressed: examController.previousQuestion,
-              child: const Text('Previous'),
-            )
-          else
-            const SizedBox(width: 88),
-          const Spacer(),
-          _QuestionDots(
-            total: examState.totalQuestions,
-            current: examState.currentIndex,
-            answers: examState.answers,
-            questions: examState.questions,
-            onTap: examController.goToQuestion,
-          ),
-          const Spacer(),
-          if (examState.isLastQuestion)
-            FilledButton(
-              onPressed: () => _showSubmitDialog(context, examController),
-              child: const Text('Submit'),
-            )
-          else
-            FilledButton(
-              onPressed: examController.nextQuestion,
-              child: const Text('Next'),
-            ),
-        ],
       ),
     );
   }
@@ -254,61 +263,123 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
       _saveAttempt(examState);
     });
 
+    final theme = Theme.of(context);
     final score = examState.calculateScore();
     final totalMarks = examState.questions.fold<int>(
       0,
       (sum, q) => sum + q.marks,
     );
-    final percentage = totalMarks > 0 ? (score / totalMarks * 100).round() : 0;
-    final colorScheme = Theme.of(context).colorScheme;
+    final percentage = totalMarks > 0 ? (score / totalMarks * 100) : 0.0;
+    final pct = percentage.round();
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Results'),
-        automaticallyImplyLeading: false,
-      ),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                percentage >= 70 ? Icons.check_circle : Icons.info,
-                size: 80,
-                color: percentage >= 70 ? Colors.green : colorScheme.primary,
+    var correct = 0;
+    var answered = 0;
+    for (final question in examState.questions) {
+      final selectedId = examState.answers[question.id];
+      if (selectedId == null) continue;
+      answered++;
+      final options = question.options;
+      if (options == null) continue;
+      if (options.any((o) => o.id == selectedId && o.isCorrect)) correct++;
+    }
+    final skipped = examState.questions.length - answered;
+    final wrong = answered - correct;
+
+    final gradient = pct >= 70
+        ? AppColors.mint
+        : pct >= 50
+        ? AppColors.sunset
+        : AppColors.ember;
+
+    final message = pct >= 80
+        ? 'Outstanding. You have this topic nailed.'
+        : pct >= 70
+        ? 'Solid work. A little more revision and it is an A*.'
+        : pct >= 50
+        ? 'A decent base. Focus on the questions you missed.'
+        : 'Keep going. Review every answer and try again.';
+
+    return AppScaffold(
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(24, 32, 24, 32),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: Column(
+                children: [
+                  ScoreRing(
+                    value: percentage / 100,
+                    gradient: gradient,
+                    size: 200,
+                    strokeWidth: 16,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          '$pct%',
+                          style: theme.textTheme.displayMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -2,
+                          ),
+                        ),
+                        Text(
+                          '$score / $totalMarks marks',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 28),
+                  Text(
+                    'Exam complete',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineMedium,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 28),
+                  Row(
+                    children: [
+                      _ResultChip(
+                        value: '$correct',
+                        label: 'Correct',
+                        gradient: AppColors.mint,
+                      ),
+                      const SizedBox(width: 12),
+                      _ResultChip(
+                        value: '$wrong',
+                        label: 'Wrong',
+                        gradient: AppColors.ember,
+                      ),
+                      const SizedBox(width: 12),
+                      _ResultChip(
+                        value: '$skipped',
+                        label: 'Skipped',
+                        gradient: AppColors.brandSoft,
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 32),
+                  GradientButton(
+                    onPressed: () =>
+                        context.push('/review/${widget.paper.id}'),
+                    icon: Icons.manage_search_rounded,
+                    child: const Text('Review answers'),
+                  ),
+                  const SizedBox(height: 12),
+                  GlassButton(
+                    onPressed: () => context.go('/'),
+                    icon: Icons.home_rounded,
+                    child: const Text('Back to home'),
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-              Text(
-                'Exam Complete!',
-                style: Theme.of(context).textTheme.headlineMedium,
-              ),
-              const SizedBox(height: 16),
-              Text(
-                '$score / $totalMarks',
-                style: Theme.of(context).textTheme.displayMedium?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                '$percentage%',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(color: colorScheme.primary),
-              ),
-              const SizedBox(height: 32),
-              FilledButton.icon(
-                onPressed: () => context.push('/review/${widget.paper.id}'),
-                icon: const Icon(Icons.rate_review),
-                label: const Text('Review Answers'),
-              ),
-              const SizedBox(height: 12),
-              OutlinedButton(
-                onPressed: () => context.go('/'),
-                child: const Text('Back to Home'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -319,16 +390,20 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Exit Exam?'),
+        title: const Text('Exit exam?'),
         content: const Text(
-          'Are you sure you want to exit? Your progress will be lost.',
+          'Your answers so far will not be graded. Are you sure you want to '
+          'leave?',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text('Keep going'),
           ),
           FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
             onPressed: () {
               examController.submit();
               Navigator.of(context).pop();
@@ -345,12 +420,12 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Submit Exam?'),
-        content: const Text('Are you sure you want to submit your answers?'),
+        title: const Text('Submit exam?'),
+        content: const Text('You can still review every answer afterwards.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
+            child: const Text('Not yet'),
           ),
           FilledButton(
             onPressed: () {
@@ -360,6 +435,263 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
             child: const Text('Submit'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _OptionTile extends StatelessWidget {
+  const _OptionTile({required this.letter, required this.text, required this.selected});
+
+  final String letter;
+  final String text;
+  final bool selected;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: selected
+            ? AppColors.primary.withValues(alpha: isDark ? 0.24 : 0.1)
+            : (isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : Colors.white.withValues(alpha: 0.75)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: selected
+              ? AppColors.primary
+              : (isDark
+                    ? Colors.white.withValues(alpha: 0.08)
+                    : const Color(0xFFE6EAF7)),
+          width: selected ? 1.8 : 1,
+        ),
+        boxShadow: selected
+            ? [
+                BoxShadow(
+                  color: AppColors.primary.withValues(alpha: 0.25),
+                  blurRadius: 18,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : const [],
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              gradient: selected ? AppColors.brand : null,
+              color: selected
+                  ? null
+                  : (isDark
+                        ? Colors.white.withValues(alpha: 0.07)
+                        : const Color(0xFFEEF1FC)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              letter,
+              style: TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                color: selected
+                    ? Colors.white
+                    : (isDark ? AppColors.darkInkSoft : AppColors.inkSoft),
+              ),
+            ),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Text(
+              text,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+          ),
+          AnimatedScale(
+            scale: selected ? 1 : 0.6,
+            duration: const Duration(milliseconds: 180),
+            child: Icon(
+              selected
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              size: 22,
+              color: selected
+                  ? AppColors.primary
+                  : (isDark
+                        ? AppColors.darkInkFaint
+                        : const Color(0xFFC3CAE4)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExamDock extends StatelessWidget {
+  const _ExamDock({
+    required this.examState,
+    required this.onPrevious,
+    required this.onNext,
+    required this.onJump,
+    required this.onSubmit,
+  });
+
+  final ExamState examState;
+  final VoidCallback onPrevious;
+  final VoidCallback onNext;
+  final void Function(int) onJump;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.paddingOf(context).bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(16, 12, 16, 12 + bottomInset),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.6),
+        border: Border(
+          top: BorderSide(
+            color: Theme.of(context).dividerColor.withValues(alpha: 0.7),
+          ),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 40,
+            child: ListView.separated(
+              scrollDirection: Axis.horizontal,
+              itemCount: examState.totalQuestions,
+              separatorBuilder: (_, _) => const SizedBox(width: 8),
+              itemBuilder: (context, index) {
+                final isAnswered = examState.answers.containsKey(
+                  examState.questions[index].id,
+                );
+                final isCurrent = index == examState.currentIndex;
+
+                return GestureDetector(
+                  onTap: () => onJump(index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    width: 40,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      gradient: isCurrent ? AppColors.brand : null,
+                      color: isCurrent
+                          ? null
+                          : isAnswered
+                          ? AppColors.success.withValues(alpha: 0.16)
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(14),
+                      border: isCurrent
+                          ? null
+                          : Border.all(
+                              color: isAnswered
+                                  ? AppColors.success.withValues(alpha: 0.5)
+                                  : Theme.of(context).colorScheme.outline,
+                            ),
+                    ),
+                    child: Text(
+                      '${index + 1}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: isCurrent
+                            ? Colors.white
+                            : isAnswered
+                            ? AppColors.successDeep
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: GlassButton(
+                  height: 50,
+                  onPressed: examState.isFirstQuestion ? null : onPrevious,
+                  child: const Text('Previous'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: GradientButton(
+                  height: 50,
+                  onPressed: examState.isLastQuestion ? onSubmit : onNext,
+                  child: Text(examState.isLastQuestion ? 'Submit' : 'Next'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ResultChip extends StatelessWidget {
+  const _ResultChip({
+    required this.value,
+    required this.label,
+    required this.gradient,
+  });
+
+  final String value;
+  final String label;
+  final Gradient gradient;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          gradient: gradient,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: [
+            BoxShadow(
+              color: gradient.colors.last.withValues(alpha: 0.35),
+              blurRadius: 18,
+              offset: const Offset(0, 8),
+            ),
+          ],
+        ),
+        child: Column(
+          children: [
+            Text(
+              value,
+              style: theme.textTheme.headlineSmall?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -375,55 +707,41 @@ class _TimerBadge extends StatelessWidget {
     final minutes = remainingSeconds ~/ 60;
     final seconds = remainingSeconds % 60;
     final isLow = remainingSeconds < 300;
+    final text =
+        '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}';
 
-    return Padding(
-      padding: const EdgeInsets.only(right: 16),
-      child: Center(
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(
-            color: isLow
-                ? Theme.of(context).colorScheme.error
-                : Theme.of(context).colorScheme.primaryContainer,
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Text(
-            '${minutes.toString().padLeft(2, '0')}:${seconds.toString().padLeft(2, '0')}',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: isLow
-                  ? Theme.of(context).colorScheme.onError
-                  : Theme.of(context).colorScheme.onPrimaryContainer,
-            ),
-          ),
-        ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        gradient: isLow ? AppColors.ember : null,
+        color: isLow ? null : Colors.white.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(999),
+        boxShadow: isLow
+            ? [
+                BoxShadow(
+                  color: AppColors.danger.withValues(alpha: 0.5),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : const [],
       ),
-    );
-  }
-}
-
-class _QuestionProgress extends StatelessWidget {
-  const _QuestionProgress({required this.current, required this.total});
-
-  final int current;
-  final int total;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '$current / $total',
-            style: Theme.of(context).textTheme.bodyMedium,
+          Icon(
+            Icons.timer_outlined,
+            size: 16,
+            color: isLow ? Colors.white : AppColors.primaryDeep,
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: LinearProgressIndicator(
-              value: current / total,
-              minHeight: 6,
-              borderRadius: BorderRadius.circular(3),
+          const SizedBox(width: 6),
+          Text(
+            text,
+            style: TextStyle(
+              fontWeight: FontWeight.w800,
+              fontSize: 14,
+              letterSpacing: 0.4,
+              color: isLow ? Colors.white : AppColors.primaryDeep,
             ),
           ),
         ],
@@ -432,62 +750,34 @@ class _QuestionProgress extends StatelessWidget {
   }
 }
 
-class _QuestionDots extends StatelessWidget {
-  const _QuestionDots({
-    required this.total,
-    required this.current,
-    required this.answers,
-    required this.questions,
-    required this.onTap,
-  });
+class _ProgressStrip extends StatelessWidget {
+  const _ProgressStrip({required this.current, required this.total});
 
-  final int total;
   final int current;
-  final Map<String, String> answers;
-  final List questions;
-  final void Function(int) onTap;
+  final int total;
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final displayCount = total > 10 ? 10 : total;
+    final value = total > 0 ? current / total : 0.0;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(displayCount, (index) {
-        final isAnswered = answers.containsKey(questions[index].id);
-        final isCurrent = index == current;
-
-        return GestureDetector(
-          onTap: () => onTap(index),
-          child: Container(
-            width: 24,
-            height: 24,
-            margin: const EdgeInsets.symmetric(horizontal: 2),
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isCurrent
-                  ? colorScheme.primary
-                  : isAnswered
-                  ? colorScheme.primary.withAlpha(100)
-                  : colorScheme.surfaceContainerHighest,
-              border: isCurrent ? null : Border.all(color: colorScheme.outline),
-            ),
-            child: Center(
-              child: Text(
-                '${index + 1}',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: isCurrent
-                      ? colorScheme.onPrimary
-                      : colorScheme.onSurface,
-                  fontWeight: isCurrent ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(999),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween(begin: 0, end: value),
+          duration: const Duration(milliseconds: 350),
+          curve: Curves.easeOutCubic,
+          builder: (context, animated, _) => LinearProgressIndicator(
+            value: animated,
+            minHeight: 8,
+            backgroundColor: Colors.white.withValues(alpha: 0.6),
+            valueColor: const AlwaysStoppedAnimation<Color>(
+              AppColors.primary,
             ),
           ),
-        );
-      }),
+        ),
+      ),
     );
   }
 }
