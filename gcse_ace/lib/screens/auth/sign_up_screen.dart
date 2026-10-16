@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../services/auth_service.dart';
+import '../../widgets/gradient_button.dart';
+import 'auth_layout.dart';
 
 class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
@@ -15,6 +17,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _submitting = false;
+  bool _obscurePassword = true;
   String? _error;
 
   @override
@@ -59,89 +62,102 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    return Scaffold(
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Icon(Icons.school, size: 64, color: scheme.primary),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Create your account',
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.headlineMedium,
-                  ),
-                  const SizedBox(height: 32),
-                  TextFormField(
-                    controller: _emailController,
-                    keyboardType: TextInputType.emailAddress,
-                    autofillHints: const [AutofillHints.email],
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      prefixIcon: Icon(Icons.email_outlined),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      final email = value?.trim() ?? '';
-                      if (email.isEmpty) return 'Enter your email';
-                      if (!email.contains('@')) return 'Enter a valid email';
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _passwordController,
-                    obscureText: true,
-                    autofillHints: const [AutofillHints.newPassword],
-                    decoration: const InputDecoration(
-                      labelText: 'Password',
-                      prefixIcon: Icon(Icons.lock_outline),
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      final password = value ?? '';
-                      if (password.isEmpty) return 'Enter a password';
-                      if (password.length < 6) return 'At least 6 characters';
-                      return null;
-                    },
-                  ),
-                  if (_error != null) ...[
-                    const SizedBox(height: 12),
-                    Text(
-                      _error!,
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: scheme.error),
-                    ),
-                  ],
-                  const SizedBox(height: 24),
-                  FilledButton(
-                    onPressed: _submitting ? null : _submit,
-                    child: _submitting
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Text('Sign up'),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: _submitting ? null : () => context.go('/signin'),
-                    child: const Text('Already have an account? Sign in'),
-                  ),
-                ],
+    return AuthLayout(
+      eyebrow: 'GCSE ACE',
+      title: 'Create your account',
+      subtitle: 'Free access to mock exams, past papers and AI explanations.',
+      children: [
+        Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              TextFormField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'you@school.edu',
+                  prefixIcon: Icon(Icons.mail_outline_rounded),
+                ),
+                validator: (value) {
+                  final email = value?.trim() ?? '';
+                  if (email.isEmpty) return 'Enter your email';
+                  if (!email.contains('@')) return 'Enter a valid email';
+                  return null;
+                },
               ),
-            ),
+              const SizedBox(height: 14),
+              TextFormField(
+                controller: _passwordController,
+                obscureText: _obscurePassword,
+                autofillHints: const [AutofillHints.newPassword],
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _submit(),
+                decoration: InputDecoration(
+                  labelText: 'Password',
+                  helperText: 'At least 6 characters',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded),
+                  suffixIcon: IconButton(
+                    tooltip: _obscurePassword ? 'Show' : 'Hide',
+                    icon: Icon(
+                      _obscurePassword
+                          ? Icons.visibility_outlined
+                          : Icons.visibility_off_outlined,
+                    ),
+                    onPressed: () => setState(
+                      () => _obscurePassword = !_obscurePassword,
+                    ),
+                  ),
+                ),
+                validator: (value) {
+                  final password = value ?? '';
+                  if (password.isEmpty) return 'Enter a password';
+                  if (password.length < 6) return 'At least 6 characters';
+                  return null;
+                },
+              ),
+            ],
           ),
         ),
-      ),
+        if (_error != null) AuthError(message: _error!),
+        const SizedBox(height: 26),
+        GradientButton(
+          onPressed: _submitting ? null : _submit,
+          child: _submitting
+              ? const SizedBox(
+                  height: 22,
+                  width: 22,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2.4,
+                    color: Colors.white,
+                  ),
+                )
+              : const Text('Create account'),
+        ),
+        const SizedBox(height: 22),
+        Row(
+          children: [
+            const Expanded(child: Divider()),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              child: Text(
+                'or',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
+            const Expanded(child: Divider()),
+          ],
+        ),
+        const SizedBox(height: 22),
+        GlassButton(
+          onPressed: _submitting ? null : () => context.go('/signin'),
+          icon: Icons.arrow_back_rounded,
+          child: const Text('I already have an account'),
+        ),
+      ],
     );
   }
 }
