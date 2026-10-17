@@ -4,40 +4,54 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
+import '../screens/admin/admin_home.dart';
 import '../screens/home_screen.dart';
 import '../screens/materials_screen.dart';
 import '../screens/papers_screen.dart';
 import '../screens/profile_screen.dart';
 import '../theme/app_colors.dart';
 import '../widgets/app_background.dart';
+import '../providers/auth_provider.dart';
 
 /// Which tab the shell is showing. Other screens (e.g. Home's CTA) can switch
 /// tabs by writing to this instead of pushing a route.
 final shellIndexProvider = StateProvider<int>((ref) => 0);
 
-/// The root scaffold: a floating glass tab bar over the four main areas.
+/// The root scaffold: a floating glass tab bar over the main areas.
 class AppShell extends ConsumerWidget {
   const AppShell({super.key});
-
-  static const _screens = [
-    HomeScreen(),
-    PapersScreen(),
-    MaterialsScreen(),
-    ProfileScreen(),
-  ];
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final index = ref.watch(shellIndexProvider);
+    final isAdmin = ref.watch(isAdminProvider).value ?? false;
+
+    final screens = <Widget>[
+      HomeScreen(),
+      PapersScreen(),
+      MaterialsScreen(),
+      ProfileScreen(),
+      if (isAdmin) AdminHomeScreen(),
+    ];
+
+    final items = <(IconData, IconData, String)>[
+      (Icons.dashboard_outlined, Icons.dashboard, 'Home'),
+      (Icons.description_outlined, Icons.description, 'Papers'),
+      (Icons.menu_book_outlined, Icons.menu_book, 'Materials'),
+      (Icons.person_outline, Icons.person, 'Profile'),
+      if (isAdmin) (Icons.admin_panel_settings_outlined, Icons.admin_panel_settings, 'Admin'),
+    ];
 
     return AppBackground(
       child: Scaffold(
         backgroundColor: Colors.transparent,
         extendBody: false,
-        body: IndexedStack(index: index, children: _screens),
+        body: IndexedStack(index: index, children: screens),
         bottomNavigationBar: _GlassNavBar(
           index: index,
           onSelect: (i) => ref.read(shellIndexProvider.notifier).state = i,
+          itemCount: items.length,
+          items: items,
         ),
       ),
     );
@@ -45,17 +59,12 @@ class AppShell extends ConsumerWidget {
 }
 
 class _GlassNavBar extends StatelessWidget {
-  const _GlassNavBar({required this.index, required this.onSelect});
+  const _GlassNavBar({required this.index, required this.onSelect, required this.itemCount, required this.items});
 
   final int index;
   final ValueChanged<int> onSelect;
-
-  static const _items = [
-    (Icons.dashboard_outlined, Icons.dashboard, 'Home'),
-    (Icons.description_outlined, Icons.description, 'Papers'),
-    (Icons.menu_book_outlined, Icons.menu_book, 'Materials'),
-    (Icons.person_outline, Icons.person, 'Profile'),
-  ];
+  final int itemCount;
+  final List<(IconData, IconData, String)> items;
 
   @override
   Widget build(BuildContext context) {
@@ -94,8 +103,9 @@ class _GlassNavBar extends StatelessWidget {
               ],
             ),
             child: Row(
-              children: List.generate(_items.length, (i) {
+              children: List.generate(itemCount, (i) {
                 final selected = i == index;
+                final item = items[i];
                 return Expanded(
                   child: GestureDetector(
                     behavior: HitTestBehavior.opaque,
@@ -124,7 +134,7 @@ class _GlassNavBar extends StatelessWidget {
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            selected ? _items[i].$2 : _items[i].$1,
+                            selected ? item.$2 : item.$1,
                             size: 22,
                             color: selected
                                 ? Colors.white
@@ -134,7 +144,7 @@ class _GlassNavBar extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
-                            _items[i].$3,
+                            item.$3,
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: selected
