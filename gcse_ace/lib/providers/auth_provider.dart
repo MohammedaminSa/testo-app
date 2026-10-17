@@ -13,3 +13,10 @@ final authStateProvider = StreamProvider<User?>((ref) {
     (event) => event.session?.user,
   );
 });
+
+/// Whether the current user is an admin.
+final isAdminProvider = FutureProvider<bool>((ref) async {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return false;
+  return await AuthService.instance.isCurrentUserAdmin();
+});

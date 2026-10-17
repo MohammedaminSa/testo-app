@@ -19,6 +19,24 @@ class AuthService {
   /// The current user, or null when logged out.
   User? get currentUser => _client.auth.currentUser;
 
+  /// Get the role of a user from the profiles table.
+  Future<String?> getUserRole(String userId) async {
+    final data = await _client
+        .from('profiles')
+        .select('role')
+        .eq('id', userId)
+        .single();
+    return data['role'] as String?;
+  }
+
+  /// Convenience: check if current user is admin.
+  Future<bool> isCurrentUserAdmin() async {
+    final user = currentUser;
+    if (user == null) return false;
+    final role = await getUserRole(user.id);
+    return role == 'admin';
+  }
+
   Future<void> signIn({required String email, required String password}) async {
     await _client.auth.signInWithPassword(email: email, password: password);
   }
