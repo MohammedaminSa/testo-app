@@ -1,6 +1,15 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../screens/admin/admin_home.dart';
+import '../screens/admin/department_form.dart';
+import '../screens/admin/department_management.dart';
+import '../screens/admin/material_form.dart';
+import '../screens/admin/material_management.dart';
+import '../screens/admin/paper_form.dart';
+import '../screens/admin/paper_management.dart';
+import '../screens/admin/question_form.dart';
+import '../screens/admin/question_management.dart';
 import '../screens/auth/sign_in_screen.dart';
 import '../screens/auth/sign_up_screen.dart';
 import '../screens/department_papers_screen.dart';
@@ -80,6 +89,66 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/history',
         builder: (context, state) => const HistoryScreen(),
+      ),
+      // Admin routes
+      GoRoute(
+        path: '/admin',
+        builder: (context, state) => const AdminHomeScreen(),
+      ),
+      GoRoute(
+        path: '/admin/departments',
+        builder: (context, state) => const DepartmentManagementScreen(),
+      ),
+      GoRoute(
+        path: '/admin/departments/add',
+        builder: (context, state) => const DepartmentFormScreen(isEditing: false),
+      ),
+      GoRoute(
+        path: '/admin/departments/:id/edit',
+        builder: (context, state) => const DepartmentFormScreen(isEditing: true),
+      ),
+      GoRoute(
+        path: '/admin/papers',
+        builder: (context, state) => const PaperManagementScreen(),
+      ),
+      GoRoute(
+        path: '/admin/papers/add',
+        builder: (context, state) => const PaperFormScreen(isEditing: false),
+      ),
+      GoRoute(
+        path: '/admin/papers/:id/edit',
+        builder: (context, state) => const PaperFormScreen(isEditing: true),
+      ),
+      GoRoute(
+        path: '/admin/questions',
+        builder: (context, state) => const QuestionManagementScreen(),
+      ),
+      GoRoute(
+        path: '/admin/questions/add/:paperId',
+        builder: (context, state) => QuestionFormScreen(
+          isEditing: false,
+          paperId: state.pathParameters['paperId']!,
+        ),
+      ),
+      GoRoute(
+        path: '/admin/questions/:id/edit',
+        builder: (context, state) => QuestionFormScreen(
+          isEditing: true,
+          questionId: state.pathParameters['id'],
+          paperId: '', // paperId needed but we can fetch from question; for simplicity we'll pass empty and load later
+        ),
+      ),
+      GoRoute(
+        path: '/admin/materials',
+        builder: (context, state) => const MaterialManagementScreen(),
+      ),
+      GoRoute(
+        path: '/admin/materials/add',
+        builder: (context, state) => const MaterialFormScreen(isEditing: false),
+      ),
+      GoRoute(
+        path: '/admin/materials/:id/edit',
+        builder: (context, state) => const MaterialFormScreen(isEditing: true),
       ),
     ],
   );
