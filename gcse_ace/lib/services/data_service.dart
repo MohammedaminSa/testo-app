@@ -28,6 +28,11 @@ class DataService {
     return (data as List).map((json) => Paper.fromJson(json)).toList();
   }
 
+  Future<List<Paper>> getAllPapers() async {
+    final data = await _client.from('papers').select().order('year', ascending: false);
+    return (data as List).map((json) => Paper.fromJson(json)).toList();
+  }
+
   Future<List<Question>> getQuestions(String paperId) async {
     final data = await _client
         .from('questions')
@@ -92,6 +97,11 @@ class DataService {
     return (data as List).map((json) => StudyMaterial.fromJson(json)).toList();
   }
 
+  Future<List<StudyMaterial>> getAllMaterials() async {
+    final data = await _client.from('materials').select().order('created_at', ascending: false);
+    return (data as List).map((json) => StudyMaterial.fromJson(json)).toList();
+  }
+
   Future<List<Attempt>> getAttempts(String userId) async {
     final data = await _client
         .from('attempts')
@@ -99,6 +109,182 @@ class DataService {
         .eq('user_id', userId)
         .order('created_at', ascending: false);
     return (data as List).map((json) => Attempt.fromJson(json)).toList();
+  }
+
+  // Department management (Admin)
+  Future<Department> createDepartment({
+    required String name,
+    required String slug,
+    String? description,
+  }) async {
+    final result = await _client
+        .from('departments')
+        .insert({
+          'name': name,
+          'slug': slug,
+          'description': description,
+        })
+        .select()
+        .single();
+    return Department.fromJson(result);
+  }
+
+  Future<Department> updateDepartment(String id, Map<String, dynamic> updates) async {
+    final result = await _client
+        .from('departments')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    return Department.fromJson(result);
+  }
+
+  Future<void> deleteDepartment(String id) async {
+    await _client.from('departments').delete().eq('id', id);
+  }
+
+  // Paper management (Admin)
+  Future<Paper> createPaper({
+    required String departmentId,
+    required String title,
+    required int year,
+    required int durationMinutes,
+    required int totalMarks,
+  }) async {
+    final result = await _client
+        .from('papers')
+        .insert({
+          'department_id': departmentId,
+          'title': title,
+          'year': year,
+          'duration_minutes': durationMinutes,
+          'total_marks': totalMarks,
+        })
+        .select()
+        .single();
+    return Paper.fromJson(result);
+  }
+
+  Future<Paper> updatePaper(String id, Map<String, dynamic> updates) async {
+    final result = await _client
+        .from('papers')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    return Paper.fromJson(result);
+  }
+
+  Future<void> deletePaper(String id) async {
+    await _client.from('papers').delete().eq('id', id);
+  }
+
+  // Question management (Admin)
+  Future<Question> createQuestion({
+    required String paperId,
+    required String text,
+    required int orderNumber,
+    required int marks,
+    required String questionType,
+    String? correctAnswer,
+    String? explanation,
+  }) async {
+    final result = await _client
+        .from('questions')
+        .insert({
+          'paper_id': paperId,
+          'text': text,
+          'order_number': orderNumber,
+          'marks': marks,
+          'question_type': questionType,
+          'correct_answer': correctAnswer,
+          'explanation': explanation,
+        })
+        .select()
+        .single();
+    return Question.fromJson(result);
+  }
+
+  Future<Question> updateQuestion(String id, Map<String, dynamic> updates) async {
+    final result = await _client
+        .from('questions')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    return Question.fromJson(result);
+  }
+
+  Future<void> deleteQuestion(String id) async {
+    await _client.from('questions').delete().eq('id', id);
+  }
+
+  // Option management (Admin)
+  Future<Option> createOption({
+    required String questionId,
+    required String letter,
+    required String text,
+    bool isCorrect = false,
+  }) async {
+    final result = await _client
+        .from('options')
+        .insert({
+          'question_id': questionId,
+          'letter': letter,
+          'text': text,
+          'is_correct': isCorrect,
+        })
+        .select()
+        .single();
+    return Option.fromJson(result);
+  }
+
+  Future<Option> updateOption(String id, Map<String, dynamic> updates) async {
+    final result = await _client
+        .from('options')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    return Option.fromJson(result);
+  }
+
+  Future<void> deleteOption(String id) async {
+    await _client.from('options').delete().eq('id', id);
+  }
+
+  // Study material management (Admin)
+  Future<StudyMaterial> createMaterial({
+    required String departmentId,
+    required String title,
+    required String content,
+    String? url,
+  }) async {
+    final result = await _client
+        .from('materials')
+        .insert({
+          'department_id': departmentId,
+          'title': title,
+          'content': content,
+          'url': url,
+        })
+        .select()
+        .single();
+    return StudyMaterial.fromJson(result);
+  }
+
+  Future<StudyMaterial> updateMaterial(String id, Map<String, dynamic> updates) async {
+    final result = await _client
+        .from('materials')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    return StudyMaterial.fromJson(result);
+  }
+
+  Future<void> deleteMaterial(String id) async {
+    await _client.from('materials').delete().eq('id', id);
   }
 
   Future<String> saveAttempt({
