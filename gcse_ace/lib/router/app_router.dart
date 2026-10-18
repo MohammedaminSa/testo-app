@@ -12,6 +12,7 @@ import '../screens/admin/question_form.dart';
 import '../screens/admin/question_management.dart';
 import '../screens/auth/sign_in_screen.dart';
 import '../screens/auth/sign_up_screen.dart';
+import '../screens/chat_screen.dart';
 import '../screens/department_papers_screen.dart';
 import '../screens/exam_screen.dart';
 import '../screens/history_screen.dart';
@@ -89,6 +90,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/history',
         builder: (context, state) => const HistoryScreen(),
+      ),
+      GoRoute(
+        path: '/chat',
+        builder: (context, state) => const ChatScreen(),
       ),
       // Admin routes
       GoRoute(

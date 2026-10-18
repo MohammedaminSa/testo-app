@@ -3,6 +3,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/legacy.dart';
+import 'package:go_router/go_router.dart';
 
 import '../screens/admin/admin_home.dart';
 import '../screens/home_screen.dart';
@@ -47,6 +48,9 @@ class AppShell extends ConsumerWidget {
         backgroundColor: Colors.transparent,
         extendBody: false,
         body: IndexedStack(index: index, children: screens),
+        floatingActionButton: _ChatFab(
+          onTap: () => context.push('/chat'),
+        ),
         bottomNavigationBar: _GlassNavBar(
           index: index,
           onSelect: (i) => ref.read(shellIndexProvider.notifier).state = i,
@@ -163,6 +167,47 @@ class _GlassNavBar extends StatelessWidget {
                   ),
                 );
               }),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Floating action button that opens the AI tutor chat.
+class _ChatFab extends StatelessWidget {
+  const _ChatFab({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        gradient: AppColors.brand,
+        shape: BoxShape.circle,
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.45),
+            blurRadius: 18,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: onTap,
+          child: const SizedBox(
+            width: 56,
+            height: 56,
+            child: Icon(
+              Icons.smart_toy_rounded,
+              color: Colors.white,
+              size: 26,
             ),
           ),
         ),
