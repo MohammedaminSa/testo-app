@@ -1,0 +1,17 @@
+# Supabase Local Development Configuration
+
+[api]
+port = 54321
+max_rows = 1000
+
+[db]
+port = 54322
+
+[studio]
+port = 54323
+
+[functions.chat]
+verify_jwt = true
+
+[functions.explain-question]
+verify_jwt = true
