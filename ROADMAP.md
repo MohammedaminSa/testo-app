@@ -4,7 +4,7 @@
 A Flutter mobile app (Android + iOS) for GCSE students with:
 - **Mock exams** - timed, exam-style practice
 - **Previous year papers** - real past papers by subject and year
-- **Department-based materials** - reading/study notes organized by department (Maths, English, Science...)
+- **Department-based materials** - reading/study notes organized by department 
 - **AI explanations** - a clear explanation for every question you get wrong
 
 ## Tech decisions (locked in)
