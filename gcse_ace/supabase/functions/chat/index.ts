@@ -38,28 +38,32 @@ Your role is to:
 
 Keep responses concise (under 200 words unless a detailed explanation is requested).`
 
-    // Format messages for Gemini API
-    const formattedMessages = [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }]
-      },
-      ...messages.map((msg: any) => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }]
-      }))
-    ]
+    // Format messages for Gemini API, ensuring alternating turns
+    const contents: Array<{ role: string; parts: Array<{ text: string }> }> = []
+    for (const msg of (messages || [])) {
+      const role = msg.role === 'assistant' ? 'model' : 'user'
+      const text = (msg.content || '').trim()
+      if (!text) continue
+      if (contents.length > 0 && contents[contents.length - 1].role === role) {
+        contents[contents.length - 1].parts.push({ text })
+      } else {
+        contents.push({ role, parts: [{ text }] })
+      }
+    }
 
     // Call Gemini API
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          contents: formattedMessages,
+          systemInstruction: {
+            parts: [{ text: systemPrompt }]
+          },
+          contents,
           generationConfig: {
             temperature: 0.7,
             topK: 40,

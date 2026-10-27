@@ -98,6 +98,8 @@ class ChatNotifier extends Notifier<ChatState> {
       createdAt: DateTime.now(),
     );
 
+    final priorMessages = List<ChatMessage>.from(state.messages);
+
     state = state.copyWith(
       messages: [...state.messages, userMessage],
       isSending: true,
@@ -108,7 +110,7 @@ class ChatNotifier extends Notifier<ChatState> {
       final reply = await AiService.instance.sendChatMessage(
         userId: user.id,
         content: trimmed,
-        history: state.messages,
+        history: priorMessages,
       );
       final assistantMessage = ChatMessage(
         id: 'local-${DateTime.now().microsecondsSinceEpoch}-ai',

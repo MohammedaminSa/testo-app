@@ -19,6 +19,15 @@ class DataService {
     return (data as List).map((json) => Department.fromJson(json)).toList();
   }
 
+  Future<Department> getDepartmentById(String id) async {
+    final data = await _client
+        .from('departments')
+        .select()
+        .eq('id', id)
+        .single();
+    return Department.fromJson(data);
+  }
+
   Future<List<Paper>> getPapers({String? departmentId}) async {
     var query = _client.from('papers').select();
     if (departmentId != null) {
@@ -26,6 +35,15 @@ class DataService {
     }
     final data = await query.order('year', ascending: false);
     return (data as List).map((json) => Paper.fromJson(json)).toList();
+  }
+
+  Future<Paper> getPaperById(String id) async {
+    final data = await _client
+        .from('papers')
+        .select()
+        .eq('id', id)
+        .single();
+    return Paper.fromJson(data);
   }
 
   Future<List<Paper>> getAllPapers() async {
@@ -40,6 +58,28 @@ class DataService {
         .eq('paper_id', paperId)
         .order('order_number');
     return (data as List).map((json) => Question.fromJson(json)).toList();
+  }
+
+  Future<Question> getQuestionById(String id) async {
+    final data = await _client
+        .from('questions')
+        .select()
+        .eq('id', id)
+        .single();
+    return Question.fromJson(data);
+  }
+
+  Future<int> getNextQuestionOrderNumber(String paperId) async {
+    final data = await _client
+        .from('questions')
+        .select('order_number')
+        .eq('paper_id', paperId)
+        .order('order_number', ascending: false)
+        .limit(1);
+    final list = data as List;
+    if (list.isEmpty) return 1;
+    final maxOrder = list.first['order_number'] as int? ?? 0;
+    return maxOrder + 1;
   }
 
   Future<List<Option>> getOptions(String questionId) async {
@@ -100,6 +140,15 @@ class DataService {
   Future<List<StudyMaterial>> getAllMaterials() async {
     final data = await _client.from('materials').select().order('created_at', ascending: false);
     return (data as List).map((json) => StudyMaterial.fromJson(json)).toList();
+  }
+
+  Future<StudyMaterial> getMaterialById(String id) async {
+    final data = await _client
+        .from('materials')
+        .select()
+        .eq('id', id)
+        .single();
+    return StudyMaterial.fromJson(data);
   }
 
   Future<List<Attempt>> getAttempts(String userId) async {

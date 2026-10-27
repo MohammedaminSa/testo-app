@@ -73,6 +73,7 @@ create table if not exists public.materials (
   department_id uuid not null references public.departments (id) on delete cascade,
   title         text not null,
   content       text not null,
+  url           text,
   created_at    timestamptz not null default now()
 );
 
@@ -120,6 +121,20 @@ create policy "Users can delete own chat messages"
 -- 9) ROW-LEVEL SECURITY
 -- =====================================================================
 
+-- Helper: true when the signed-in user's profile role is 'admin'.
+create or replace function public.is_admin()
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  exists (
+    select 1 from public.profiles
+    where id = auth.uid() and role = 'admin'
+  );
+$$;
+
 -- Profiles: users can read their own row; admins can read all
 alter table public.profiles enable row level security;
 
@@ -134,21 +149,11 @@ create policy "Users can insert own profile"
 create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id)
-  with check (auth.uid() = id);
-
--- Helper: true when the signed-in user's profile role is 'admin'.
-create or replace function public.is_admin()
-returns boolean
-language sql
-stable
-security definer
-set search_path = public
-as $$
-  exists (
-    select 1 from public.profiles
-    where id = auth.uid() and role = 'admin'
+  with check (
+    auth.uid() = id and (
+      public.is_admin() or role = (select p.role from public.profiles p where p.id = auth.uid())
+    )
   );
-$$;
 
 -- Departments
 alter table public.departments enable row level security;

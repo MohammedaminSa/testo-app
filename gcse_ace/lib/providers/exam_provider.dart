@@ -77,7 +77,10 @@ class ExamController extends Notifier<ExamState> {
 
   @override
   ExamState build() {
-    return ExamState(
+    ref.onDispose(() {
+      _timer?.cancel();
+    });
+    return const ExamState(
       paperId: '',
       questions: [],
       remainingSeconds: 0,

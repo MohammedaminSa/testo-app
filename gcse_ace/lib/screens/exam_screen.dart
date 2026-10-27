@@ -61,12 +61,16 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
 
   Future<void> _saveAttempt(ExamState examState) async {
     if (_attemptSaved) return; // Already saved
+    _attemptSaved = true;
 
     try {
       final userAsync = ref.read(authStateProvider);
       final user = userAsync.value;
 
-      if (user == null) return;
+      if (user == null) {
+        _attemptSaved = false;
+        return;
+      }
 
       final score = examState.calculateScore();
       final totalMarks = examState.questions.fold<int>(
@@ -82,12 +86,11 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
         answers: examState.answers,
       );
 
-      _attemptSaved = true;
-
       // Refresh attempts list
       ref.invalidate(attemptsProvider);
     } catch (e) {
-      // Silent fail - don't block user from seeing results
+      // Allow retry on failure
+      _attemptSaved = false;
       debugPrint('Failed to save attempt: $e');
     }
   }
@@ -110,9 +113,20 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
         ),
       ),
       data: (questions) {
+        if (questions.isEmpty) {
+          return const AppScaffold(
+            body: EmptyState(
+              icon: Icons.quiz_outlined,
+              title: 'No questions yet',
+              subtitle: 'This paper does not have any questions added yet.',
+              gradient: AppColors.sunset,
+            ),
+          );
+        }
+
         final examController = ref.read(examProvider.notifier);
 
-        if (!_configured && questions.isNotEmpty) {
+        if (!_configured) {
           _configured = true;
           WidgetsBinding.instance.addPostFrameCallback((_) {
             examController.configure(
@@ -124,6 +138,12 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
         }
 
         final examState = ref.watch(examProvider);
+
+        if (examState.questions.isEmpty || examState.paperId != widget.paper.id) {
+          return const AppScaffold(
+            body: LoadingState(label: 'Preparing exam...'),
+          );
+        }
 
         if (examState.isSubmitted) {
           return _buildResultsScreen(context, examState, examController);
@@ -215,23 +235,21 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
                         ),
                         if (question.options != null) ...[
                           const SizedBox(height: 22),
-                          RadioGroup<String>(
-                            onChanged: (value) {
-                              if (value != null) {
-                                examController.selectAnswer(question.id, value);
-                              }
-                            },
-                            child: Column(
-                              children: [
-                                for (final option in question.options!)
-                                  _OptionTile(
-                                    letter: option.letter,
-                                    text: option.text,
-                                    selected:
-                                        selectedOptionId == option.id,
-                                  ),
-                              ],
-                            ),
+                          Column(
+                            children: [
+                              for (final option in question.options!)
+                                _OptionTile(
+                                  letter: option.letter,
+                                  text: option.text,
+                                  selected: selectedOptionId == option.id,
+                                  onTap: () {
+                                    examController.selectAnswer(
+                                      question.id,
+                                      option.id,
+                                    );
+                                  },
+                                ),
+                            ],
                           ),
                         ],
                       ],
@@ -441,96 +459,112 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
 }
 
 class _OptionTile extends StatelessWidget {
-  const _OptionTile({required this.letter, required this.text, required this.selected});
+  const _OptionTile({
+    required this.letter,
+    required this.text,
+    required this.selected,
+    required this.onTap,
+  });
 
   final String letter;
   final String text;
   final bool selected;
+  final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: selected
-            ? AppColors.primary.withValues(alpha: isDark ? 0.24 : 0.1)
-            : (isDark
-                  ? Colors.white.withValues(alpha: 0.04)
-                  : Colors.white.withValues(alpha: 0.75)),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: selected
-              ? AppColors.primary
-              : (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFFE6EAF7)),
-          width: selected ? 1.8 : 1,
-        ),
-        boxShadow: selected
-            ? [
-                BoxShadow(
-                  color: AppColors.primary.withValues(alpha: 0.25),
-                  blurRadius: 18,
-                  offset: const Offset(0, 6),
-                ),
-              ]
-            : const [],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: selected ? AppColors.brand : null,
-              color: selected
-                  ? null
-                  : (isDark
-                        ? Colors.white.withValues(alpha: 0.07)
-                        : const Color(0xFFEEF1FC)),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              letter,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: 15,
-                color: selected
-                    ? Colors.white
-                    : (isDark ? AppColors.darkInkSoft : AppColors.inkSoft),
-              ),
-            ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-              ),
-            ),
-          ),
-          AnimatedScale(
-            scale: selected ? 1 : 0.6,
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(20),
+          child: AnimatedContainer(
             duration: const Duration(milliseconds: 180),
-            child: Icon(
-              selected
-                  ? Icons.check_circle_rounded
-                  : Icons.radio_button_unchecked_rounded,
-              size: 22,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
               color: selected
-                  ? AppColors.primary
+                  ? AppColors.primary.withValues(alpha: isDark ? 0.24 : 0.1)
                   : (isDark
-                        ? AppColors.darkInkFaint
-                        : const Color(0xFFC3CAE4)),
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : Colors.white.withValues(alpha: 0.75)),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: selected
+                    ? AppColors.primary
+                    : (isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE6EAF7)),
+                width: selected ? 1.8 : 1,
+              ),
+              boxShadow: selected
+                  ? [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.25),
+                        blurRadius: 18,
+                        offset: const Offset(0, 6),
+                      ),
+                    ]
+                  : const [],
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    gradient: selected ? AppColors.brand : null,
+                    color: selected
+                        ? null
+                        : (isDark
+                              ? Colors.white.withValues(alpha: 0.07)
+                              : const Color(0xFFEEF1FC)),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    letter,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 15,
+                      color: selected
+                          ? Colors.white
+                          : (isDark ? AppColors.darkInkSoft : AppColors.inkSoft),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    text,
+                    style: theme.textTheme.bodyLarge?.copyWith(
+                      fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+                AnimatedScale(
+                  scale: selected ? 1 : 0.6,
+                  duration: const Duration(milliseconds: 180),
+                  child: Icon(
+                    selected
+                        ? Icons.check_circle_rounded
+                        : Icons.radio_button_unchecked_rounded,
+                    size: 22,
+                    color: selected
+                        ? AppColors.primary
+                        : (isDark
+                              ? AppColors.darkInkFaint
+                              : const Color(0xFFC3CAE4)),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
+        ),
       ),
     );
   }

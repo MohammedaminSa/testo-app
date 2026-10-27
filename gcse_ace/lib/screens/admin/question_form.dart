@@ -37,6 +37,7 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
   final List<bool> _isCorrect = List.filled(4, false);
   bool _isLoading = false;
   List<Option> _existingOptions = [];
+  String? _loadedPaperId;
 
   @override
   void initState() {
@@ -46,13 +47,25 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _textController.dispose();
+    _marksController.dispose();
+    _typeController.dispose();
+    _correctAnswerController.dispose();
+    _explanationController.dispose();
+    for (final c in _optionControllers) {
+      c.dispose();
+    }
+    super.dispose();
+  }
+
   Future<void> _loadQuestion() async {
-    final question = await ref.read(dataServiceProvider).getQuestions(widget.questionId!).then(
-          (list) => list.firstWhere((q) => q.id == widget.questionId, orElse: () => throw Exception('Not found')),
-        );
+    final question = await ref.read(dataServiceProvider).getQuestionById(widget.questionId!);
     final options = await ref.read(dataServiceProvider).getOptions(widget.questionId!);
     if (mounted) {
       setState(() {
+        _loadedPaperId = question.paperId;
         _existingOptions = options;
         _textController.text = question.text;
         _marksController.text = question.marks.toString();
@@ -77,6 +90,7 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
     setState(() => _isLoading = true);
     try {
       String? newQuestionId;
+      final effectivePaperId = widget.paperId.isNotEmpty ? widget.paperId : (_loadedPaperId ?? '');
       if (widget.isEditing) {
         final updatedQ = await ref.read(dataServiceProvider).updateQuestion(
           widget.questionId!,
@@ -112,10 +126,11 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
           }
         }
       } else {
+        final nextOrder = await ref.read(dataServiceProvider).getNextQuestionOrderNumber(effectivePaperId);
         final createdQ = await ref.read(dataServiceProvider).createQuestion(
-          paperId: widget.paperId,
+          paperId: effectivePaperId,
           text: _textController.text,
-          orderNumber: 1,
+          orderNumber: nextOrder,
           marks: int.parse(_marksController.text),
           questionType: _typeController.text,
           correctAnswer: _correctAnswerController.text,
@@ -133,6 +148,10 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
             );
           }
         }
+      }
+      if (effectivePaperId.isNotEmpty) {
+        ref.invalidate(questionsWithOptionsProvider(effectivePaperId));
+        ref.invalidate(questionsProvider(effectivePaperId));
       }
       if (mounted) {
         context.pop();

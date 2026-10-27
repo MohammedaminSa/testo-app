@@ -38,14 +38,28 @@ class _DepartmentFormScreenState extends ConsumerState<DepartmentFormScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _slugController.dispose();
+    _descriptionController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadDepartment() async {
-    final dept = await ref.read(dataServiceProvider).getDepartments().then(
-          (list) => list.firstWhere((d) => d.id == widget.departmentId, orElse: () => throw Exception('Not found')),
+    try {
+      final dept = await ref.read(dataServiceProvider).getDepartmentById(widget.departmentId!);
+      if (mounted) {
+        _nameController.text = dept.name;
+        _slugController.text = dept.slug;
+        _descriptionController.text = dept.description ?? '';
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading department: $e')),
         );
-    if (mounted) {
-      _nameController.text = dept.name;
-      _slugController.text = dept.slug;
-      _descriptionController.text = dept.description ?? '';
+      }
     }
   }
 
@@ -69,6 +83,7 @@ class _DepartmentFormScreenState extends ConsumerState<DepartmentFormScreen> {
           description: _descriptionController.text.isEmpty ? null : _descriptionController.text,
         );
       }
+      ref.invalidate(departmentsProvider);
       if (mounted) {
         context.pop();
         ScaffoldMessenger.of(context).showSnackBar(

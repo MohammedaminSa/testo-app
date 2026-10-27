@@ -118,6 +118,7 @@ class PaperManagementScreen extends ConsumerWidget {
               if (context.mounted) {
                 context.pop();
                 ref.invalidate(papersAllProvider);
+                ref.invalidate(papersProvider(null));
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),

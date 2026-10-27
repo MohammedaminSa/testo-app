@@ -19,7 +19,6 @@ import '../screens/history_screen.dart';
 import '../screens/paper_detail_screen.dart';
 import '../screens/review_screen.dart';
 import '../providers/auth_provider.dart';
-import '../providers/data_provider.dart';
 import '../services/auth_service.dart';
 import '../shell/app_shell.dart';
 
@@ -31,6 +30,7 @@ import '../shell/app_shell.dart';
 /// the redirect and bounces the user to the right place automatically.
 final routerProvider = Provider<GoRouter>((ref) {
   ref.watch(authStateProvider);
+  final isAdminAsync = ref.watch(isAdminProvider);
 
   return GoRouter(
     initialLocation: '/',
@@ -42,6 +42,12 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (user == null && !loggingIn) return '/signin';
       if (user != null && loggingIn) return '/';
+
+      if (state.matchedLocation.startsWith('/admin')) {
+        final isAdmin = isAdminAsync.value ?? false;
+        if (!isAdmin) return '/';
+      }
+
       return null;
     },
     routes: [
@@ -58,12 +64,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/department/:departmentId',
         builder: (context, state) {
           final departmentId = state.pathParameters['departmentId']!;
-          final departments = ref.read(departmentsProvider).value ?? [];
-          final department = departments.firstWhere(
-            (d) => d.id == departmentId,
-            orElse: () => throw Exception('Department not found'),
-          );
-          return DepartmentPapersScreen(department: department);
+          return DepartmentPapersScreen(departmentId: departmentId);
         },
       ),
       GoRoute(
@@ -91,10 +92,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/history',
         builder: (context, state) => const HistoryScreen(),
       ),
-      GoRoute(
-        path: '/chat',
-        builder: (context, state) => const ChatScreen(),
-      ),
+      GoRoute(path: '/chat', builder: (context, state) => const ChatScreen()),
       // Admin routes
       GoRoute(
         path: '/admin',
@@ -106,11 +104,15 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/admin/departments/add',
-        builder: (context, state) => const DepartmentFormScreen(isEditing: false),
+        builder: (context, state) =>
+            const DepartmentFormScreen(isEditing: false),
       ),
       GoRoute(
         path: '/admin/departments/:id/edit',
-        builder: (context, state) => const DepartmentFormScreen(isEditing: true),
+        builder: (context, state) => DepartmentFormScreen(
+          isEditing: true,
+          departmentId: state.pathParameters['id'],
+        ),
       ),
       GoRoute(
         path: '/admin/papers',
@@ -122,7 +124,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/admin/papers/:id/edit',
-        builder: (context, state) => const PaperFormScreen(isEditing: true),
+        builder: (context, state) => PaperFormScreen(
+          isEditing: true,
+          paperId: state.pathParameters['id'],
+        ),
       ),
       GoRoute(
         path: '/admin/questions',
@@ -140,7 +145,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state) => QuestionFormScreen(
           isEditing: true,
           questionId: state.pathParameters['id'],
-          paperId: '', // paperId needed but we can fetch from question; for simplicity we'll pass empty and load later
+          paperId: '',
         ),
       ),
       GoRoute(
@@ -153,7 +158,10 @@ final routerProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/admin/materials/:id/edit',
-        builder: (context, state) => const MaterialFormScreen(isEditing: true),
+        builder: (context, state) => MaterialFormScreen(
+          isEditing: true,
+          materialId: state.pathParameters['id'],
+        ),
       ),
     ],
   );

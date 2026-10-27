@@ -162,7 +162,10 @@ class _QuestionManagementScreenState extends ConsumerState<QuestionManagementScr
               await ref.read(dataServiceProvider).deleteQuestion(questionId);
               if (context.mounted) {
                 context.pop();
-                ref.invalidate(questionsWithOptionsProvider);
+                if (_selectedPaperId != null) {
+                  ref.invalidate(questionsWithOptionsProvider(_selectedPaperId!));
+                  ref.invalidate(questionsProvider(_selectedPaperId!));
+                }
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),

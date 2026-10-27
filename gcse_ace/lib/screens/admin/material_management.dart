@@ -118,6 +118,7 @@ class MaterialManagementScreen extends ConsumerWidget {
               if (context.mounted) {
                 context.pop();
                 ref.invalidate(materialsAllProvider);
+                ref.invalidate(materialsProvider(null));
               }
             },
             style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),

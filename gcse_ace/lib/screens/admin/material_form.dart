@@ -42,6 +42,14 @@ class _MaterialFormScreenState extends ConsumerState<MaterialFormScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _contentController.dispose();
+    _urlController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadDepartments() async {
     final depts = await ref.read(departmentsProvider.future);
     if (mounted) {
@@ -50,22 +58,22 @@ class _MaterialFormScreenState extends ConsumerState<MaterialFormScreen> {
   }
 
   Future<void> _loadMaterial() async {
-    final material = await ref
-        .read(dataServiceProvider)
-        .getAllMaterials()
-        .then(
-          (list) => list.firstWhere(
-            (m) => m.id == widget.materialId,
-            orElse: () => throw Exception('Not found'),
-          ),
+    try {
+      final material = await ref.read(dataServiceProvider).getMaterialById(widget.materialId!);
+      if (mounted) {
+        setState(() {
+          _titleController.text = material.title;
+          _contentController.text = material.content;
+          _urlController.text = material.url ?? '';
+          _selectedDepartmentId = material.departmentId;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading material: $e')),
         );
-    if (mounted) {
-      setState(() {
-        _titleController.text = material.title;
-        _contentController.text = material.content;
-        _urlController.text = material.url ?? '';
-        _selectedDepartmentId = material.departmentId;
-      });
+      }
     }
   }
 
@@ -95,6 +103,11 @@ class _MaterialFormScreenState extends ConsumerState<MaterialFormScreen> {
               content: _contentController.text,
               url: _urlController.text.isEmpty ? null : _urlController.text,
             );
+      }
+      ref.invalidate(materialsAllProvider);
+      ref.invalidate(materialsProvider(null));
+      if (_selectedDepartmentId != null) {
+        ref.invalidate(materialsProvider(_selectedDepartmentId));
       }
       if (mounted) {
         context.pop();

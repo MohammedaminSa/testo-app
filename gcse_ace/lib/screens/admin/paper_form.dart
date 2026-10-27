@@ -39,6 +39,15 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
     }
   }
 
+  @override
+  void dispose() {
+    _titleController.dispose();
+    _yearController.dispose();
+    _durationController.dispose();
+    _marksController.dispose();
+    super.dispose();
+  }
+
   Future<void> _loadDepartments() async {
     final depts = await ref.read(departmentsProvider.future);
     if (mounted) {
@@ -47,21 +56,21 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
   }
 
   Future<void> _loadPaper() async {
-    final paper = await ref
-        .read(dataServiceProvider)
-        .getAllPapers()
-        .then(
-          (list) => list.firstWhere(
-            (p) => p.id == widget.paperId,
-            orElse: () => throw Exception('Not found'),
-          ),
+    try {
+      final paper = await ref.read(dataServiceProvider).getPaperById(widget.paperId!);
+      if (mounted) {
+        _titleController.text = paper.title;
+        _yearController.text = paper.year.toString();
+        _durationController.text = paper.durationMinutes.toString();
+        _marksController.text = paper.totalMarks.toString();
+        _selectedDepartmentId = paper.departmentId;
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error loading paper: $e')),
         );
-    if (mounted) {
-      _titleController.text = paper.title;
-      _yearController.text = paper.year.toString();
-      _durationController.text = paper.durationMinutes.toString();
-      _marksController.text = paper.totalMarks.toString();
-      _selectedDepartmentId = paper.departmentId;
+      }
     }
   }
 
@@ -93,6 +102,11 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
               durationMinutes: int.parse(_durationController.text),
               totalMarks: int.parse(_marksController.text),
             );
+      }
+      ref.invalidate(papersAllProvider);
+      ref.invalidate(papersProvider(null));
+      if (_selectedDepartmentId != null) {
+        ref.invalidate(papersProvider(_selectedDepartmentId));
       }
       if (mounted) {
         context.pop();
@@ -169,10 +183,12 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Enter year';
-                          if (int.tryParse(value) == null)
+                          }
+                          if (int.tryParse(value) == null) {
                             return 'Enter a valid year';
+                          }
                           return null;
                         },
                       ),
@@ -185,10 +201,12 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Enter duration';
-                          if (int.tryParse(value) == null)
+                          }
+                          if (int.tryParse(value) == null) {
                             return 'Enter a valid number';
+                          }
                           return null;
                         },
                       ),
@@ -201,10 +219,12 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
                         ),
                         keyboardType: TextInputType.number,
                         validator: (value) {
-                          if (value == null || value.isEmpty)
+                          if (value == null || value.isEmpty) {
                             return 'Enter marks';
-                          if (int.tryParse(value) == null)
+                          }
+                          if (int.tryParse(value) == null) {
                             return 'Enter a valid number';
+                          }
                           return null;
                         },
                       ),

@@ -12,12 +12,46 @@ import '../widgets/glass_app_bar.dart';
 import '../widgets/glass_card.dart';
 
 class DepartmentPapersScreen extends ConsumerWidget {
-  const DepartmentPapersScreen({super.key, required this.department});
+  const DepartmentPapersScreen({
+    super.key,
+    required this.departmentId,
+    this.department,
+  });
 
-  final Department department;
+  final String departmentId;
+  final Department? department;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final deptsAsync = ref.watch(departmentsProvider);
+    final resolvedDept = this.department ??
+        deptsAsync.value?.where((d) => d.id == departmentId).firstOrNull;
+
+    if (resolvedDept == null) {
+      return deptsAsync.when(
+        loading: () => const AppScaffold(
+          body: LoadingState(label: 'Loading subject...'),
+        ),
+        error: (e, _) => AppScaffold(
+          body: EmptyState(
+            icon: Icons.wifi_off_rounded,
+            title: 'Subject not found',
+            subtitle: '$e',
+            gradient: AppColors.ember,
+          ),
+        ),
+        data: (_) => const AppScaffold(
+          body: EmptyState(
+            icon: Icons.search_off_rounded,
+            title: 'Subject not found',
+            subtitle: 'This subject does not exist or was removed.',
+            gradient: AppColors.sunset,
+          ),
+        ),
+      );
+    }
+
+    final department = resolvedDept;
     final papersAsync = ref.watch(papersProvider(department.id));
     final theme = Theme.of(context);
 
