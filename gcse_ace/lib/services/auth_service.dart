@@ -20,13 +20,37 @@ class AuthService {
   User? get currentUser => _client.auth.currentUser;
 
   /// Get the role of a user from the profiles table.
+  ///
+  /// Uses `.maybeSingle()` so a missing row does not throw an unhandled
+  /// PostgrestException. If no profile exists yet, it creates a default
+  /// student record as a graceful fallback.
   Future<String?> getUserRole(String userId) async {
-    final data = await _client
-        .from('profiles')
-        .select('role')
-        .eq('id', userId)
-        .single();
-    return data['role'] as String?;
+    try {
+      final data = await _client
+          .from('profiles')
+          .select('role')
+          .eq('id', userId)
+          .maybeSingle();
+
+      if (data == null) {
+        // Fallback: If trigger hasn't fired yet or wasn't set up, ensure profile exists
+        final user = currentUser;
+        final name = (user?.userMetadata?['full_name'] as String?)?.trim();
+        final fallbackName = (name != null && name.isNotEmpty)
+            ? name
+            : (user?.email?.split('@').first ?? 'Student');
+        await _client.from('profiles').upsert({
+          'id': userId,
+          'full_name': fallbackName,
+          'role': 'student',
+        });
+        return 'student';
+      }
+
+      return data['role'] as String?;
+    } catch (_) {
+      return null;
+    }
   }
 
   /// Convenience: check if current user is admin.
@@ -44,8 +68,33 @@ class AuthService {
   Future<AuthResponse> signUp({
     required String email,
     required String password,
+    String? fullName,
   }) async {
-    return _client.auth.signUp(email: email, password: password);
+    final response = await _client.auth.signUp(
+      email: email,
+      password: password,
+      data: fullName != null && fullName.isNotEmpty
+          ? {'full_name': fullName}
+          : null,
+    );
+
+    final user = response.user;
+    if (user != null) {
+      try {
+        final displayName = (fullName != null && fullName.isNotEmpty)
+            ? fullName
+            : email.split('@').first;
+        await _client.from('profiles').upsert({
+          'id': user.id,
+          'full_name': displayName,
+          'role': 'student',
+        });
+      } catch (_) {
+        // Trigger on_auth_user_created handles this if client insert fails
+      }
+    }
+
+    return response;
   }
 
   Future<void> signOut() async {

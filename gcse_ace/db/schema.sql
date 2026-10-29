@@ -12,6 +12,30 @@ create table if not exists public.profiles (
   created_at  timestamptz not null default now()
 );
 
+-- Auto-create a profile row when a new user signs up in auth.users
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  insert into public.profiles (id, full_name, role)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1), 'Student'),
+    'student'
+  )
+  on conflict (id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 -- =====================================================================
 -- 2) DEPARTMENTS - subject areas (Maths, English, Science, ...)
 -- =====================================================================
