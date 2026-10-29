@@ -233,7 +233,7 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
                             fontWeight: FontWeight.w600,
                           ),
                         ),
-                        if (question.options != null) ...[
+                        if (question.options != null && question.options!.isNotEmpty) ...[
                           const SizedBox(height: 22),
                           Column(
                             children: [
@@ -250,6 +250,14 @@ class _ExamContentState extends ConsumerState<_ExamContent> {
                                   },
                                 ),
                             ],
+                          ),
+                        ] else ...[
+                          _WrittenAnswerField(
+                            key: ValueKey(question.id),
+                            initialText: selectedOptionId ?? '',
+                            onChanged: (text) {
+                              examController.selectAnswer(question.id, text);
+                            },
                           ),
                         ],
                       ],
@@ -565,6 +573,105 @@ class _OptionTile extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+class _WrittenAnswerField extends StatefulWidget {
+  const _WrittenAnswerField({
+    super.key,
+    required this.initialText,
+    required this.onChanged,
+  });
+
+  final String initialText;
+  final ValueChanged<String> onChanged;
+
+  @override
+  State<_WrittenAnswerField> createState() => _WrittenAnswerFieldState();
+}
+
+class _WrittenAnswerFieldState extends State<_WrittenAnswerField> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialText);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(
+                Icons.edit_note_rounded,
+                size: 20,
+                color: AppColors.primary,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                'Written Response',
+                style: theme.textTheme.titleSmall?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          TextField(
+            controller: _controller,
+            maxLines: 6,
+            minLines: 4,
+            onChanged: widget.onChanged,
+            decoration: InputDecoration(
+              hintText: 'Type your answer here...',
+              filled: true,
+              fillColor: isDark
+                  ? Colors.white.withValues(alpha: 0.04)
+                  : const Color(0xFFF7F8FE),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : const Color(0xFFE2E6F5),
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: BorderSide(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.1)
+                      : const Color(0xFFE2E6F5),
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(
+                  color: AppColors.primary,
+                  width: 1.6,
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

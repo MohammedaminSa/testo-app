@@ -71,15 +71,26 @@ class ReviewScreen extends ConsumerWidget {
   int _countCorrect(ExamState examState, List<Question> questions) {
     int count = 0;
     for (final question in questions) {
-      final selectedOptionId = examState.answers[question.id];
-      if (selectedOptionId != null && question.options != null) {
-        final selected = question.options!.where(
-          (o) => o.id == selectedOptionId && o.isCorrect,
-        );
-        if (selected.isNotEmpty) count++;
+      final answer = examState.answers[question.id];
+      if (_isQuestionCorrect(question, answer)) {
+        count++;
       }
     }
     return count;
+  }
+
+  static bool _isQuestionCorrect(Question question, String? answer) {
+    if (answer == null || answer.trim().isEmpty) return false;
+    if (question.options != null && question.options!.isNotEmpty) {
+      final selected = question.options!.where(
+        (o) => o.id == answer && o.isCorrect,
+      );
+      return selected.isNotEmpty;
+    }
+    if (question.correctAnswer != null && question.correctAnswer!.trim().isNotEmpty) {
+      return answer.trim().toLowerCase() == question.correctAnswer!.trim().toLowerCase();
+    }
+    return false;
   }
 }
 
@@ -213,11 +224,7 @@ class _ReviewContent extends StatelessWidget {
   }
 
   bool _isCorrect(Question question, String? selectedOptionId) {
-    if (selectedOptionId == null || question.options == null) return false;
-    final selected = question.options!.where(
-      (o) => o.id == selectedOptionId && o.isCorrect,
-    );
-    return selected.isNotEmpty;
+    return ReviewScreen._isQuestionCorrect(question, selectedOptionId);
   }
 }
 
@@ -244,19 +251,24 @@ class _QuestionReviewCardState extends State<_QuestionReviewCard> {
   String? _explanationError;
 
   String? get _studentAnswerText {
-    if (widget.selectedOptionId == null || widget.question.options == null) {
+    if (widget.selectedOptionId == null || widget.selectedOptionId!.trim().isEmpty) {
       return null;
     }
-    final selected = widget.question.options!.where(
-      (o) => o.id == widget.selectedOptionId,
-    );
-    return selected.isNotEmpty ? selected.first.text : null;
+    if (widget.question.options != null && widget.question.options!.isNotEmpty) {
+      final selected = widget.question.options!.where(
+        (o) => o.id == widget.selectedOptionId,
+      );
+      return selected.isNotEmpty ? selected.first.text : widget.selectedOptionId;
+    }
+    return widget.selectedOptionId;
   }
 
   String? get _correctAnswerText {
-    if (widget.question.options == null) return null;
-    final correct = widget.question.options!.where((o) => o.isCorrect);
-    return correct.isNotEmpty ? correct.first.text : null;
+    if (widget.question.options != null && widget.question.options!.isNotEmpty) {
+      final correct = widget.question.options!.where((o) => o.isCorrect);
+      return correct.isNotEmpty ? correct.first.text : widget.question.correctAnswer;
+    }
+    return widget.question.correctAnswer;
   }
 
   Future<void> _fetchExplanation() async {
@@ -335,9 +347,11 @@ class _QuestionReviewCardState extends State<_QuestionReviewCard> {
                 child: Text(
                   widget.isCorrect
                       ? 'Correct'
-                      : widget.selectedOptionId == null
+                      : (widget.selectedOptionId == null || widget.selectedOptionId!.trim().isEmpty)
                       ? 'Skipped'
-                      : 'Incorrect',
+                      : (widget.question.options != null && widget.question.options!.isNotEmpty
+                          ? 'Incorrect'
+                          : 'Review Answer'),
                   style: TextStyle(
                     fontSize: 11.5,
                     fontWeight: FontWeight.w800,
@@ -361,7 +375,7 @@ class _QuestionReviewCardState extends State<_QuestionReviewCard> {
             '${widget.question.marks} ${widget.question.marks == 1 ? 'mark' : 'marks'}',
             style: theme.textTheme.bodySmall,
           ),
-          if (widget.question.options != null) ...[
+          if (widget.question.options != null && widget.question.options!.isNotEmpty) ...[
             const SizedBox(height: 16),
             ...widget.question.options!.map((option) {
               final isSelected = option.id == widget.selectedOptionId;
@@ -451,8 +465,69 @@ class _QuestionReviewCardState extends State<_QuestionReviewCard> {
                 ),
               );
             }),
+          ] else ...[
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : const Color(0xFFF3F5FD),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFE6EAF7),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Your written response:',
+                    style: theme.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    (widget.selectedOptionId != null && widget.selectedOptionId!.trim().isNotEmpty)
+                        ? widget.selectedOptionId!
+                        : 'No written answer provided.',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontStyle: (widget.selectedOptionId == null || widget.selectedOptionId!.trim().isEmpty)
+                          ? FontStyle.italic
+                          : null,
+                    ),
+                  ),
+                  if (widget.question.correctAnswer != null && widget.question.correctAnswer!.trim().isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    const Divider(height: 1),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Model Answer / Key Points:',
+                      style: theme.textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.successDeep,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.question.correctAnswer!,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
           ],
-          if (!widget.isCorrect && widget.selectedOptionId == null) ...[
+          if (!widget.isCorrect &&
+              (widget.selectedOptionId == null || widget.selectedOptionId!.trim().isEmpty) &&
+              (widget.question.options != null && widget.question.options!.isNotEmpty)) ...[
             const SizedBox(height: 4),
             Text(
               'You did not answer this question.',

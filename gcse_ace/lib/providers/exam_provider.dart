@@ -51,10 +51,12 @@ class ExamState {
   int calculateScore() {
     int score = 0;
     for (final question in questions) {
-      final selectedOptionId = answers[question.id];
-      if (selectedOptionId != null && question.options != null) {
+      final answer = answers[question.id];
+      if (answer == null || answer.trim().isEmpty) continue;
+
+      if (question.options != null && question.options!.isNotEmpty) {
         final selectedOption = question.options!.firstWhere(
-          (o) => o.id == selectedOptionId,
+          (o) => o.id == answer,
           orElse: () => Option(
             id: '',
             questionId: question.id,
@@ -64,6 +66,10 @@ class ExamState {
           ),
         );
         if (selectedOption.isCorrect) {
+          score += question.marks;
+        }
+      } else if (question.correctAnswer != null && question.correctAnswer!.trim().isNotEmpty) {
+        if (answer.trim().toLowerCase() == question.correctAnswer!.trim().toLowerCase()) {
           score += question.marks;
         }
       }

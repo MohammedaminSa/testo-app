@@ -32,39 +32,49 @@ void main() {
       ],
     );
 
+    const q3 = Question(
+      id: 'q3',
+      paperId: 'p1',
+      orderNumber: 3,
+      text: 'What is the formula for Ohm\'s law?',
+      marks: 4,
+      questionType: 'written',
+      correctAnswer: 'V = I * R',
+    );
+
     test('calculates correct score when answers are correct', () {
       final state = ExamState(
         paperId: 'p1',
-        questions: const [q1, q2],
-        answers: const {'q1': 'opt1_a', 'q2': 'opt2_b'},
+        questions: const [q1, q2, q3],
+        answers: const {'q1': 'opt1_a', 'q2': 'opt2_b', 'q3': 'V = I * R'},
         remainingSeconds: 3600,
       );
 
-      expect(state.calculateScore(), 5);
-      expect(state.answeredCount, 2);
-      expect(state.totalQuestions, 2);
+      expect(state.calculateScore(), 9);
+      expect(state.answeredCount, 3);
+      expect(state.totalQuestions, 3);
     });
 
     test('calculates 0 when no answers or all wrong', () {
       final state = ExamState(
         paperId: 'p1',
-        questions: const [q1, q2],
-        answers: const {'q1': 'opt1_b', 'q2': 'opt2_a'},
+        questions: const [q1, q2, q3],
+        answers: const {'q1': 'opt1_b', 'q2': 'opt2_a', 'q3': 'wrong answer'},
         remainingSeconds: 3600,
       );
 
       expect(state.calculateScore(), 0);
     });
 
-    test('calculates partial score', () {
+    test('calculates partial score including written question match', () {
       final state = ExamState(
         paperId: 'p1',
-        questions: const [q1, q2],
-        answers: const {'q1': 'opt1_a'},
+        questions: const [q1, q2, q3],
+        answers: const {'q1': 'opt1_a', 'q3': 'v = i * r'},
         remainingSeconds: 3600,
       );
 
-      expect(state.calculateScore(), 2);
+      expect(state.calculateScore(), 6);
     });
   });
 

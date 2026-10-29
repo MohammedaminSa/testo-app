@@ -30,7 +30,7 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _textController = TextEditingController();
   final _marksController = TextEditingController();
-  final _typeController = TextEditingController();
+  final _typeController = TextEditingController(text: 'multiple_choice');
   final _correctAnswerController = TextEditingController();
   final _explanationController = TextEditingController();
   final List<TextEditingController> _optionControllers = List.generate(4, (_) => TextEditingController());
@@ -38,6 +38,8 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
   bool _isLoading = false;
   List<Option> _existingOptions = [];
   String? _loadedPaperId;
+
+  bool get _isWritten => _typeController.text == 'written';
 
   @override
   void initState() {
@@ -103,25 +105,27 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
           },
         );
         newQuestionId = updatedQ.id;
-        for (int i = 0; i < _optionControllers.length; i++) {
-          final text = _optionControllers[i].text.trim();
-          if (text.isNotEmpty) {
-            final optionId = _existingOptions.length > i ? _existingOptions[i].id : null;
-            if (optionId != null) {
-              await ref.read(dataServiceProvider).updateOption(
-                optionId,
-                {
-                  'text': text,
-                  'is_correct': _isCorrect[i],
-                },
-              );
-            } else {
-              await ref.read(dataServiceProvider).createOption(
-                questionId: newQuestionId,
-                letter: String.fromCharCode(65 + i),
-                text: text,
-                isCorrect: _isCorrect[i],
-              );
+        if (!_isWritten) {
+          for (int i = 0; i < _optionControllers.length; i++) {
+            final text = _optionControllers[i].text.trim();
+            if (text.isNotEmpty) {
+              final optionId = _existingOptions.length > i ? _existingOptions[i].id : null;
+              if (optionId != null) {
+                await ref.read(dataServiceProvider).updateOption(
+                  optionId,
+                  {
+                    'text': text,
+                    'is_correct': _isCorrect[i],
+                  },
+                );
+              } else {
+                await ref.read(dataServiceProvider).createOption(
+                  questionId: newQuestionId,
+                  letter: String.fromCharCode(65 + i),
+                  text: text,
+                  isCorrect: _isCorrect[i],
+                );
+              }
             }
           }
         }
@@ -133,19 +137,23 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
           orderNumber: nextOrder,
           marks: int.parse(_marksController.text),
           questionType: _typeController.text,
-          correctAnswer: _correctAnswerController.text,
+          correctAnswer: _correctAnswerController.text.trim().isEmpty
+              ? null
+              : _correctAnswerController.text.trim(),
           explanation: _explanationController.text.isEmpty ? null : _explanationController.text,
         );
         newQuestionId = createdQ.id;
-        for (int i = 0; i < _optionControllers.length; i++) {
-          final text = _optionControllers[i].text.trim();
-          if (text.isNotEmpty) {
-            await ref.read(dataServiceProvider).createOption(
-              questionId: newQuestionId,
-              letter: String.fromCharCode(65 + i),
-              text: text,
-              isCorrect: _isCorrect[i],
-            );
+        if (!_isWritten) {
+          for (int i = 0; i < _optionControllers.length; i++) {
+            final text = _optionControllers[i].text.trim();
+            if (text.isNotEmpty) {
+              await ref.read(dataServiceProvider).createOption(
+                questionId: newQuestionId,
+                letter: String.fromCharCode(65 + i),
+                text: text,
+                isCorrect: _isCorrect[i],
+              );
+            }
           }
         }
       }
@@ -215,26 +223,48 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
                         },
                       ),
                       const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _typeController,
+                      DropdownButtonFormField<String>(
+                        initialValue: _typeController.text.isNotEmpty ? _typeController.text : 'multiple_choice',
                         decoration: const InputDecoration(
-                          labelText: 'Question Type (e.g., Multiple Choice)',
+                          labelText: 'Question Type',
                           prefixIcon: Icon(Icons.category_rounded),
                         ),
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Enter type' : null,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'multiple_choice',
+                            child: Text('Multiple Choice (A-D)'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'written',
+                            child: Text('Written / Open Response'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value != null) {
+                            setState(() {
+                              _typeController.text = value;
+                            });
+                          }
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
                         controller: _correctAnswerController,
-                        decoration: const InputDecoration(
-                          labelText: 'Correct Answer (Letter)',
-                          prefixIcon: Icon(Icons.check_circle_rounded),
-                          hintText: 'e.g., A, B, C, D',
+                        decoration: InputDecoration(
+                          labelText: _isWritten
+                              ? 'Model Answer / Key Points (optional)'
+                              : 'Correct Answer (Letter: A, B, C, D)',
+                          prefixIcon: const Icon(Icons.check_circle_rounded),
+                          hintText: _isWritten ? 'e.g., Photosynthesis creates glucose and oxygen' : 'e.g., A, B, C, D',
                         ),
-                        maxLength: 1,
-                        validator: (value) =>
-                            value == null || value.isEmpty ? 'Enter correct letter' : null,
+                        maxLength: _isWritten ? null : 1,
+                        maxLines: _isWritten ? 3 : 1,
+                        validator: (value) {
+                          if (!_isWritten && (value == null || value.trim().isEmpty)) {
+                            return 'Enter correct letter';
+                          }
+                          return null;
+                        },
                       ),
                       const SizedBox(height: 16),
                       TextFormField(
@@ -245,40 +275,42 @@ class _QuestionFormScreenState extends ConsumerState<QuestionFormScreen> {
                         ),
                         maxLines: 3,
                       ),
-                      const SizedBox(height: 24),
-                      const Text(
-                        'Options (A-D)',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                      ),
-                      const SizedBox(height: 8),
-                      ...List.generate(4, (index) {
-                        return Padding(
-                          padding: const EdgeInsets.only(bottom: 12),
-                          child: Row(
-                            children: [
-                              SizedBox(
-                                width: 24,
-                                child: Text('${String.fromCharCode(65 + index)})'),
-                              ),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: TextFormField(
-                                  controller: _optionControllers[index],
-                                  decoration: const InputDecoration(
-                                    labelText: 'Option text',
-                                    isDense: true,
+                      if (!_isWritten) ...[
+                        const SizedBox(height: 24),
+                        const Text(
+                          'Options (A-D)',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(height: 8),
+                        ...List.generate(4, (index) {
+                          return Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: Row(
+                              children: [
+                                SizedBox(
+                                  width: 24,
+                                  child: Text('${String.fromCharCode(65 + index)})'),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: TextFormField(
+                                    controller: _optionControllers[index],
+                                    decoration: const InputDecoration(
+                                      labelText: 'Option text',
+                                      isDense: true,
+                                    ),
                                   ),
                                 ),
-                              ),
-                              const SizedBox(width: 12),
-                              Checkbox(
-                                value: _isCorrect[index],
-                                onChanged: (value) => setState(() => _isCorrect[index] = value ?? false),
-                              ),
-                            ],
-                          ),
-                        );
-                      }),
+                                const SizedBox(width: 12),
+                                Checkbox(
+                                  value: _isCorrect[index],
+                                  onChanged: (value) => setState(() => _isCorrect[index] = value ?? false),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
                       const SizedBox(height: 24),
                       GradientButton(
                         onPressed: _save,
