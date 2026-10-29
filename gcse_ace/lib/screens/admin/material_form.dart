@@ -193,8 +193,9 @@ class _MaterialFormScreenState extends ConsumerState<MaterialFormScreen> {
                       TextFormField(
                         controller: _urlController,
                         decoration: const InputDecoration(
-                          labelText: 'URL (optional)',
-                          prefixIcon: Icon(Icons.link_rounded),
+                          labelText: 'PDF Link or Resource URL (optional)',
+                          prefixIcon: Icon(Icons.picture_as_pdf_rounded),
+                          hintText: 'e.g., https://example.com/guide.pdf',
                         ),
                       ),
                       const SizedBox(height: 24),

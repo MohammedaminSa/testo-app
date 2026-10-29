@@ -218,6 +218,7 @@ class _MaterialsList extends ConsumerWidget {
   void _showMaterialDetail(BuildContext context, StudyMaterial material) {
     final theme = Theme.of(context);
     final hasUrl = material.url != null && material.url!.trim().isNotEmpty;
+    final isPdf = hasUrl && material.url!.toLowerCase().contains('.pdf');
 
     showModalBottomSheet<void>(
       context: context,
@@ -251,18 +252,22 @@ class _MaterialsList extends ConsumerWidget {
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                           decoration: BoxDecoration(
-                            color: AppColors.primary.withValues(alpha: 0.12),
+                            color: (isPdf ? Colors.redAccent : AppColors.primary).withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
-                              const Icon(Icons.link_rounded, size: 13, color: AppColors.primary),
+                              Icon(
+                                isPdf ? Icons.picture_as_pdf_rounded : Icons.link_rounded,
+                                size: 13,
+                                color: isPdf ? Colors.redAccent : AppColors.primary,
+                              ),
                               const SizedBox(width: 4),
                               Text(
-                                'Has Link',
+                                isPdf ? 'PDF Document' : 'Has Link',
                                 style: theme.textTheme.labelSmall?.copyWith(
-                                  color: AppColors.primary,
+                                  color: isPdf ? Colors.redAccent : AppColors.primary,
                                   fontWeight: FontWeight.w700,
                                 ),
                               ),
@@ -300,12 +305,12 @@ class _MaterialsList extends ConsumerWidget {
                               width: 40,
                               height: 40,
                               decoration: BoxDecoration(
-                                color: AppColors.secondary.withValues(alpha: 0.15),
+                                color: (isPdf ? Colors.redAccent : AppColors.secondary).withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(12),
                               ),
-                              child: const Icon(
-                                Icons.open_in_new_rounded,
-                                color: AppColors.secondary,
+                              child: Icon(
+                                isPdf ? Icons.picture_as_pdf_rounded : Icons.open_in_new_rounded,
+                                color: isPdf ? Colors.redAccent : AppColors.secondary,
                                 size: 20,
                               ),
                             ),
@@ -315,7 +320,7 @@ class _MaterialsList extends ConsumerWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    'External Resource',
+                                    isPdf ? 'Attached PDF Document' : 'External Resource',
                                     style: theme.textTheme.titleSmall?.copyWith(
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -347,8 +352,8 @@ class _MaterialsList extends ConsumerWidget {
                   padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
                   child: GradientButton(
                     onPressed: () => _openExternalUrl(context, material.url!),
-                    icon: Icons.open_in_browser_rounded,
-                    child: const Text('Open external resource'),
+                    icon: isPdf ? Icons.picture_as_pdf_rounded : Icons.open_in_browser_rounded,
+                    child: Text(isPdf ? 'Open PDF document' : 'Open external resource'),
                   ),
                 ),
               ),
@@ -412,6 +417,7 @@ class _MaterialTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final hasUrl = material.url != null && material.url!.trim().isNotEmpty;
+    final isPdf = hasUrl && material.url!.toLowerCase().contains('.pdf');
 
     return Material(
       color: Colors.transparent,
@@ -426,13 +432,15 @@ class _MaterialTile extends StatelessWidget {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
+                  color: (isPdf ? Colors.redAccent : AppColors.primary).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Icon(
-                  hasUrl ? Icons.link_rounded : Icons.article_outlined,
+                  isPdf
+                      ? Icons.picture_as_pdf_rounded
+                      : (hasUrl ? Icons.link_rounded : Icons.article_outlined),
                   size: 20,
-                  color: AppColors.primary,
+                  color: isPdf ? Colors.redAccent : AppColors.primary,
                 ),
               ),
               const SizedBox(width: 14),
