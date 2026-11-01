@@ -111,11 +111,16 @@ create table if not exists public.options (
 create table if not exists public.materials (
   id            uuid primary key default gen_random_uuid(),
   department_id uuid not null references public.departments (id) on delete cascade,
+  course_id     uuid references public.courses (id) on delete set null,
+  course_name   text,
   title         text not null,
   content       text not null,
   url           text,
   created_at    timestamptz not null default now()
 );
+
+alter table public.materials add column if not exists course_id uuid references public.courses (id) on delete set null;
+alter table public.materials add column if not exists course_name text;
 
 -- =====================================================================
 -- 7) ATTEMPTS - one student's run of one paper
@@ -365,6 +370,33 @@ create index if not exists idx_papers_exam_type  on public.papers (exam_type);
 create index if not exists idx_questions_paper   on public.questions (paper_id);
 create index if not exists idx_options_question  on public.options (question_id);
 create index if not exists idx_materials_department on public.materials (department_id);
+create index if not exists idx_materials_course     on public.materials (course_id);
 create index if not exists idx_attempts_user     on public.attempts (user_id);
 create index if not exists idx_attempts_paper    on public.attempts (paper_id);
 create index if not exists idx_chat_messages_user on public.chat_messages (user_id, created_at);
+
+-- =====================================================================
+-- 10) STORAGE BUCKET FOR READING MATERIAL PDFS
+-- =====================================================================
+insert into storage.buckets (id, name, public)
+values ('materials', 'materials', true)
+on conflict (id) do nothing;
+
+create policy "Public view access for materials bucket"
+  on storage.objects for select
+  using (bucket_id = 'materials');
+
+create policy "Authenticated users can upload material pdfs"
+  on storage.objects for insert
+  to authenticated
+  with check (bucket_id = 'materials');
+
+create policy "Authenticated users can update material pdfs"
+  on storage.objects for update
+  to authenticated
+  using (bucket_id = 'materials');
+
+create policy "Authenticated users can delete material pdfs"
+  on storage.objects for delete
+  to authenticated
+  using (bucket_id = 'materials');
