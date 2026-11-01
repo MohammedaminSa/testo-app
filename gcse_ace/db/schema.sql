@@ -48,11 +48,27 @@ create table if not exists public.departments (
 );
 
 -- =====================================================================
--- 3) PAPERS - an exam or a past paper, belongs to one department
+-- 2b) COURSES - subject courses/modules under a department
+-- =====================================================================
+create table if not exists public.courses (
+  id            uuid primary key default gen_random_uuid(),
+  department_id uuid not null references public.departments (id) on delete cascade,
+  name          text not null,
+  code          text,
+  description   text,
+  created_at    timestamptz not null default now(),
+  unique (department_id, name)
+);
+
+-- =====================================================================
+-- 3) PAPERS - an exam or a past paper, belongs to one department and course
 -- =====================================================================
 create table if not exists public.papers (
   id               uuid primary key default gen_random_uuid(),
   department_id    uuid not null references public.departments (id) on delete cascade,
+  course_id        uuid references public.courses (id) on delete set null,
+  course_name      text,
+  exam_type        text not null default 'mock' check (exam_type in ('mock', 'exit_exam')),
   title            text not null,
   year             integer not null,
   duration_minutes integer not null,
@@ -203,6 +219,30 @@ create policy "Admins can delete departments"
   to authenticated
   using (public.is_admin());
 
+-- Courses
+alter table public.courses enable row level security;
+
+create policy "Anyone can view courses"
+  on public.courses for select
+  to authenticated
+  using (true);
+
+create policy "Admins can insert courses"
+  on public.courses for insert
+  to authenticated
+  with check (public.is_admin());
+
+create policy "Admins can update courses"
+  on public.courses for update
+  to authenticated
+  using (public.is_admin())
+  with check (public.is_admin());
+
+create policy "Admins can delete courses"
+  on public.courses for delete
+  to authenticated
+  using (public.is_admin());
+
 -- Papers
 alter table public.papers enable row level security;
 
@@ -318,7 +358,10 @@ create policy "Users can update own attempts"
 -- =====================================================================
 -- Convenient indexes for the queries we'll write later
 -- =====================================================================
+create index if not exists idx_courses_department on public.courses (department_id);
 create index if not exists idx_papers_department on public.papers (department_id);
+create index if not exists idx_papers_course     on public.papers (course_id);
+create index if not exists idx_papers_exam_type  on public.papers (exam_type);
 create index if not exists idx_questions_paper   on public.questions (paper_id);
 create index if not exists idx_options_question  on public.options (question_id);
 create index if not exists idx_materials_department on public.materials (department_id);
