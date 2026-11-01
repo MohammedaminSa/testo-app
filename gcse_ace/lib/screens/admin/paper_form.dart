@@ -9,7 +9,7 @@ import '../../widgets/app_scaffold.dart';
 import '../../widgets/glass_app_bar.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/gradient_button.dart';
-import '../../widgets/loading_state.dart';
+import '../../widgets/empty_state.dart';
 
 class PaperFormScreen extends ConsumerStatefulWidget {
   final String? paperId;
