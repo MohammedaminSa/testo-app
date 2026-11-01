@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/attempt.dart';
@@ -382,21 +384,45 @@ class DataService {
   // Study material management (Admin)
   Future<StudyMaterial> createMaterial({
     required String departmentId,
+    String? courseId,
+    String? courseName,
     required String title,
     required String content,
     String? url,
   }) async {
+    final payload = <String, dynamic>{
+      'department_id': departmentId,
+      'title': title,
+      'content': content,
+      'url': url,
+    };
+    if (courseId != null) payload['course_id'] = courseId;
+    if (courseName != null) payload['course_name'] = courseName;
+
     final result = await _client
         .from('materials')
-        .insert({
-          'department_id': departmentId,
-          'title': title,
-          'content': content,
-          'url': url,
-        })
+        .insert(payload)
         .select()
         .single();
     return StudyMaterial.fromJson(result);
+  }
+
+  Future<String> uploadMaterialPdf({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    final timestamp = DateTime.now().millisecondsSinceEpoch;
+    final sanitized = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+    final filePath = 'materials/${timestamp}_$sanitized';
+    await _client.storage.from('materials').uploadBinary(
+      filePath,
+      bytes,
+      fileOptions: const FileOptions(
+        contentType: 'application/pdf',
+        upsert: true,
+      ),
+    );
+    return _client.storage.from('materials').getPublicUrl(filePath);
   }
 
   Future<StudyMaterial> updateMaterial(String id, Map<String, dynamic> updates) async {

@@ -193,6 +193,8 @@ final createMaterialProvider =
     FutureProvider.family<StudyMaterial, Map<String, dynamic>>((ref, data) async {
   return ref.read(dataServiceProvider).createMaterial(
     departmentId: data['departmentId'] as String,
+    courseId: data['courseId'] as String?,
+    courseName: data['courseName'] as String?,
     title: data['title'] as String,
     content: data['content'] as String,
     url: data['url'] as String?,
