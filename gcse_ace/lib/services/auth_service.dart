@@ -123,4 +123,40 @@ class AuthService {
   Future<void> signOut() async {
     await _client.auth.signOut();
   }
+
+  /// Updates the user's username in metadata/profiles and optionally changes password.
+  Future<void> updateProfile({
+    String? username,
+    String? password,
+  }) async {
+    final user = currentUser;
+    if (user == null) throw Exception('No user logged in');
+
+    final trimmedUsername = username?.trim();
+
+    // 1. Update username in metadata and public.profiles table
+    if (trimmedUsername != null && trimmedUsername.isNotEmpty) {
+      await _client.auth.updateUser(
+        UserAttributes(
+          data: {
+            'username': trimmedUsername,
+            'full_name': trimmedUsername,
+          },
+        ),
+      );
+
+      await _client.from('profiles').upsert({
+        'id': user.id,
+        'username': trimmedUsername,
+        'full_name': trimmedUsername,
+      });
+    }
+
+    // 2. Update password if provided
+    if (password != null && password.trim().isNotEmpty) {
+      await _client.auth.updateUser(
+        UserAttributes(password: password.trim()),
+      );
+    }
+  }
 }
