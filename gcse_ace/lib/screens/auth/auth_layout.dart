@@ -34,23 +34,35 @@ class AuthLayout extends StatelessWidget {
                 children: [
                   Center(
                     child: Container(
-                      width: 78,
-                      height: 78,
+                      width: 82,
+                      height: 82,
                       decoration: BoxDecoration(
-                        gradient: AppColors.aurora,
-                        borderRadius: BorderRadius.circular(26),
+                        borderRadius: BorderRadius.circular(24),
                         boxShadow: [
                           BoxShadow(
                             color: AppColors.primary.withValues(alpha: 0.45),
-                            blurRadius: 30,
-                            offset: const Offset(0, 14),
+                            blurRadius: 28,
+                            offset: const Offset(0, 12),
                           ),
                         ],
                       ),
-                      child: const Icon(
-                        Icons.school_rounded,
-                        color: Colors.white,
-                        size: 38,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(24),
+                        child: Image.asset(
+                          'assets/images/app_icon.png',
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            decoration: BoxDecoration(
+                              gradient: AppColors.aurora,
+                              borderRadius: BorderRadius.circular(24),
+                            ),
+                            child: const Icon(
+                              Icons.school_rounded,
+                              color: Colors.white,
+                              size: 38,
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                   ),
