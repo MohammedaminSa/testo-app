@@ -12,9 +12,19 @@ import '../widgets/app_scaffold.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/glass_app_bar.dart';
 import '../widgets/glass_card.dart';
+import '../widgets/gradient_button.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
+
+  void _showEditAccountSheet(BuildContext context, WidgetRef ref, String currentUsername) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _EditAccountSheet(currentUsername: currentUsername),
+    );
+  }
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -44,6 +54,7 @@ class ProfileScreen extends ConsumerWidget {
           _IdentityCard(
             displayName: displayName,
             email: user.email ?? '',
+            onEdit: () => _showEditAccountSheet(context, ref, displayName),
           ),
           const SizedBox(height: 20),
           attemptsAsync.when(
@@ -63,6 +74,14 @@ class ProfileScreen extends ConsumerWidget {
             padding: EdgeInsets.zero,
             child: Column(
               children: [
+                _InfoTile(
+                  icon: Icons.manage_accounts_rounded,
+                  iconColor: AppColors.primary,
+                  title: 'Edit account',
+                  subtitle: 'Update your username or password',
+                  onTap: () => _showEditAccountSheet(context, ref, displayName),
+                ),
+                const Divider(height: 1, indent: 68),
                 _InfoTile(
                   icon: Icons.school_rounded,
                   iconColor: AppColors.primary,
@@ -109,10 +128,15 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _IdentityCard extends StatelessWidget {
-  const _IdentityCard({required this.displayName, required this.email});
+  const _IdentityCard({
+    required this.displayName,
+    required this.email,
+    required this.onEdit,
+  });
 
   final String displayName;
   final String email;
+  final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
@@ -202,6 +226,20 @@ class _IdentityCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(width: 8),
+          IconButton(
+            tooltip: 'Edit account',
+            onPressed: onEdit,
+            icon: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.22),
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white.withValues(alpha: 0.4)),
+              ),
+              child: const Icon(Icons.edit_rounded, color: Colors.white, size: 18),
+            ),
+          ),
         ],
       ),
     );
@@ -215,66 +253,75 @@ class _StatsSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final completed = attempts.where((a) => a.isCompleted).toList();
-    final total = completed.length;
-
-    double average = 0;
-    if (total > 0) {
-      average =
-          completed.fold<double>(0, (sum, a) => sum + a.percentage) / total;
-    }
-    final best = total > 0
-        ? completed
-              .map((a) => a.percentage)
-              .reduce((a, b) => a > b ? a : b)
-        : 0.0;
+    final theme = Theme.of(context);
+    final count = attempts.length;
+    final averagePercent = count == 0
+        ? 0
+        : (attempts.fold<int>(0, (acc, a) => acc + a.percent) / count).round();
 
     return Row(
       children: [
-        StatTile(
-          value: '$total',
-          label: 'Exams',
-          icon: Icons.checklist_rounded,
-          gradient: AppColors.brand,
-        ),
-        const SizedBox(width: 12),
-        StatTile(
-          value: '${average.toStringAsFixed(0)}%',
-          label: 'Average',
-          icon: Icons.insights_rounded,
-          gradient: AppColors.mint,
-        ),
-        const SizedBox(width: 12),
-        StatTile(
-          value: '${best.toStringAsFixed(0)}%',
-          label: 'Best',
-          icon: Icons.emoji_events_rounded,
-          gradient: AppColors.sunset,
-        ),
-      ],
-    );
-  }
-}
-
-class _StatsSkeleton extends StatelessWidget {
-  const _StatsSkeleton();
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: [
-        for (var i = 0; i < 3; i++) ...[
-          Expanded(
-            child: Container(
-              height: 104,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(22),
-              ),
+        Expanded(
+          child: GlassCard(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'COMPLETED',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.secondary,
+                    letterSpacing: 1.6,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$count',
+                  style: theme.textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  count == 1 ? 'attempt' : 'attempts',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
             ),
           ),
-          if (i < 2) const SizedBox(width: 12),
-        ],
+        ),
+        const SizedBox(width: 14),
+        Expanded(
+          child: GlassCard(
+            padding: const EdgeInsets.all(18),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'AVERAGE',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    color: AppColors.primary,
+                    letterSpacing: 1.6,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '$averagePercent%',
+                  style: theme.textTheme.headlineLarge?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  count == 0 ? 'no attempts yet' : 'overall score',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ],
+            ),
+          ),
+        ),
       ],
     );
   }
@@ -288,53 +335,46 @@ class _AttemptHistory extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final recent = attempts.take(5).toList();
 
-    if (attempts.isEmpty) {
-      return GlassCard(
-        radius: 24,
-        child: Column(
-          children: [
-            const Icon(
-              Icons.emoji_events_outlined,
-              size: 42,
-              color: AppColors.primary,
-            ),
-            const SizedBox(height: 12),
-            Text('No attempts yet', style: theme.textTheme.titleMedium),
-            const SizedBox(height: 6),
-            Text(
-              'Your results will show up here after your first exam.',
-              textAlign: TextAlign.center,
-              style: theme.textTheme.bodySmall,
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionTitle(
-          title: 'Recent attempts',
-          action: TextButton(
-            onPressed: () => context.push('/history'),
-            child: const Text('See all'),
-          ),
-        ),
-        GlassCard(
-          radius: 24,
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          child: Column(
+    return GlassCard(
+      radius: 24,
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              for (var i = 0; i < attempts.take(4).length; i++) ...[
-                if (i > 0) const Divider(indent: 64),
-                _AttemptTile(attempt: attempts[i]),
-              ],
+              Text(
+                'Recent attempts',
+                style: theme.textTheme.titleMedium,
+              ),
+              if (attempts.length > 5)
+                TextButton(
+                  onPressed: () => context.push('/history'),
+                  child: const Text('View all'),
+                ),
             ],
           ),
-        ),
-      ],
+          const SizedBox(height: 12),
+          if (recent.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  'No attempts yet. Pick a paper to start.',
+                  style: theme.textTheme.bodySmall,
+                ),
+              ),
+            )
+          else
+            for (var i = 0; i < recent.length; i++) ...[
+              if (i > 0) const Divider(height: 20),
+              _AttemptTile(attempt: recent[i]),
+            ],
+        ],
+      ),
     );
   }
 }
@@ -347,80 +387,102 @@ class _AttemptTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final pct = attempt.percentage;
-    final gradient = pct >= 70
-        ? AppColors.mint
-        : pct >= 50
-        ? AppColors.sunset
-        : AppColors.ember;
+    final date = DateFormat('d MMM yyyy').format(attempt.startedAt);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              gradient: attempt.isCompleted
-                  ? gradient
-                  : const LinearGradient(
-                      colors: [Color(0xFF94A3B8), Color(0xFF64748B)],
+    return InkWell(
+      onTap: () => context.push('/results/${attempt.id}'),
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    attempt.paper?.title ?? 'Practice paper',
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      fontWeight: FontWeight.w600,
                     ),
-              borderRadius: BorderRadius.circular(15),
-            ),
-            child: attempt.isCompleted
-                ? Text(
-                    pct.toStringAsFixed(0),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  )
-                : const Icon(
-                    Icons.hourglass_bottom_rounded,
-                    color: Colors.white,
-                    size: 18,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  attempt.paperTitle ?? 'Unknown paper',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall,
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  '${attempt.departmentName ?? 'Practice'} • '
-                  '${DateFormat('d MMM yyyy').format(attempt.startedAt)}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.bodySmall,
-                ),
-              ],
-            ),
-          ),
-          if (attempt.isCompleted)
-            Text(
-              '${attempt.score}/${attempt.totalMarks}',
-              style: theme.textTheme.titleSmall?.copyWith(
-                color: gradient.colors.first,
+                  const SizedBox(height: 3),
+                  Text(
+                    date,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ],
               ),
-            )
-          else
-            Text(
-              'In progress',
-              style: theme.textTheme.bodySmall,
             ),
-        ],
+            const SizedBox(width: 12),
+            _ScoreBadge(percent: attempt.percent),
+            const SizedBox(width: 8),
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 20,
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ],
+        ),
       ),
+    );
+  }
+}
+
+class _ScoreBadge extends StatelessWidget {
+  const _ScoreBadge({required this.percent});
+
+  final int percent;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color bg;
+    final Color fg;
+
+    if (percent >= 70) {
+      bg = const Color(0xFF10B981).withValues(alpha: 0.16);
+      fg = const Color(0xFF10B981);
+    } else if (percent >= 50) {
+      bg = const Color(0xFFF59E0B).withValues(alpha: 0.16);
+      fg = const Color(0xFFF59E0B);
+    } else {
+      bg = const Color(0xFFEF4444).withValues(alpha: 0.16);
+      fg = const Color(0xFFEF4444);
+    }
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        '$percent%',
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w800,
+          fontSize: 12,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatsSkeleton extends StatelessWidget {
+  const _StatsSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Row(
+      children: [
+        Expanded(child: GlassCard(padding: EdgeInsets.all(24), child: SizedBox(height: 60))),
+        SizedBox(width: 14),
+        Expanded(child: GlassCard(padding: EdgeInsets.all(24), child: SizedBox(height: 60))),
+      ],
     );
   }
 }
@@ -476,6 +538,301 @@ class _InfoTile extends StatelessWidget {
                 color: theme.colorScheme.onSurfaceVariant,
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _EditAccountSheet extends ConsumerStatefulWidget {
+  const _EditAccountSheet({required this.currentUsername});
+
+  final String currentUsername;
+
+  @override
+  ConsumerState<_EditAccountSheet> createState() => _EditAccountSheetState();
+}
+
+class _EditAccountSheetState extends ConsumerState<_EditAccountSheet> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _usernameController;
+  final _passwordController = TextEditingController();
+  final _confirmPasswordController = TextEditingController();
+
+  bool _obscurePassword = true;
+  bool _obscureConfirmPassword = true;
+  bool _isSaving = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _usernameController = TextEditingController(text: widget.currentUsername);
+  }
+
+  @override
+  void dispose() {
+    _usernameController.dispose();
+    _passwordController.dispose();
+    _confirmPasswordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final newUsername = _usernameController.text.trim();
+    final newPassword = _passwordController.text.trim();
+
+    setState(() {
+      _isSaving = true;
+      _errorMessage = null;
+    });
+
+    try {
+      await AuthService.instance.updateProfile(
+        username: newUsername != widget.currentUsername ? newUsername : null,
+        password: newPassword.isNotEmpty ? newPassword : null,
+      );
+
+      // Invalidate providers to immediately update UI everywhere
+      ref.invalidate(userProfileProvider);
+      ref.invalidate(authStateProvider);
+
+      if (mounted) {
+        Navigator.of(context).pop();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Account details updated successfully!'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _errorMessage = e.toString().replaceFirst('Exception: ', '');
+          _isSaving = false;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 24 + bottomInset),
+      child: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Center(
+                  child: Container(
+                    width: 40,
+                    height: 4,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.onSurfaceVariant.withAlpha(80),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withAlpha(30),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.manage_accounts_rounded,
+                        color: AppColors.primary,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Account',
+                            style: theme.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          Text(
+                            'Update your username or password',
+                            style: theme.textTheme.bodySmall,
+                          ),
+                        ],
+                      ),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+
+                // Username field
+                TextFormField(
+                  controller: _usernameController,
+                  textInputAction: TextInputAction.next,
+                  decoration: const InputDecoration(
+                    labelText: 'Username',
+                    prefixIcon: Icon(Icons.person_outline_rounded),
+                  ),
+                  validator: (value) {
+                    final v = value?.trim() ?? '';
+                    if (v.isEmpty) return 'Enter a username';
+                    if (v.length < 3) {
+                      return 'Username must be at least 3 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 18),
+
+                // Password divider & header
+                Row(
+                  children: [
+                    const Icon(Icons.lock_outline_rounded, size: 18, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Change Password',
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Leave password blank if you only want to change your username.',
+                  style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey[600]),
+                ),
+                const SizedBox(height: 12),
+
+                // New Password
+                TextFormField(
+                  controller: _passwordController,
+                  obscureText: _obscurePassword,
+                  textInputAction: TextInputAction.next,
+                  decoration: InputDecoration(
+                    labelText: 'New Password (optional)',
+                    prefixIcon: const Icon(Icons.lock_reset_rounded),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () =>
+                          setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value != null && value.isNotEmpty && value.length < 6) {
+                      return 'Password must be at least 6 characters';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Confirm Password
+                TextFormField(
+                  controller: _confirmPasswordController,
+                  obscureText: _obscureConfirmPassword,
+                  textInputAction: TextInputAction.done,
+                  onFieldSubmitted: (_) => _save(),
+                  decoration: InputDecoration(
+                    labelText: 'Confirm New Password',
+                    prefixIcon: const Icon(Icons.check_circle_outline_rounded),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscureConfirmPassword
+                            ? Icons.visibility_outlined
+                            : Icons.visibility_off_outlined,
+                      ),
+                      onPressed: () => setState(
+                        () => _obscureConfirmPassword = !_obscureConfirmPassword,
+                      ),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (_passwordController.text.isNotEmpty &&
+                        value != _passwordController.text) {
+                      return 'Passwords do not match';
+                    }
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 16),
+
+                if (_errorMessage != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withAlpha(20),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.redAccent.withAlpha(60)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(
+                          Icons.error_outline_rounded,
+                          color: Colors.redAccent,
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            _errorMessage!,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 13,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                GradientButton(
+                  onPressed: _isSaving ? null : _save,
+                  icon: Icons.save_rounded,
+                  child: _isSaving
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Save Changes'),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );
