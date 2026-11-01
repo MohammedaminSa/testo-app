@@ -73,13 +73,11 @@ create table if not exists public.courses (
 );
 
 -- =====================================================================
--- 3) PAPERS - an exam or a past paper, belongs to one department and course
+-- 3) PAPERS - an exam or a past paper, belongs to one department
 -- =====================================================================
 create table if not exists public.papers (
   id               uuid primary key default gen_random_uuid(),
   department_id    uuid not null references public.departments (id) on delete cascade,
-  course_id        uuid references public.courses (id) on delete set null,
-  course_name      text,
   exam_type        text not null default 'mock' check (exam_type in ('mock', 'exit_exam')),
   title            text not null,
   year             integer not null,
@@ -87,6 +85,10 @@ create table if not exists public.papers (
   total_marks      integer not null,
   created_at       timestamptz not null default now()
 );
+
+-- Drop course columns from papers if previously added
+alter table if exists public.papers drop column if exists course_id;
+alter table if exists public.papers drop column if exists course_name;
 
 -- =====================================================================
 -- 4) QUESTIONS - each question inside a paper
@@ -410,7 +412,6 @@ create policy "Users can update own attempts"
 -- =====================================================================
 create index if not exists idx_courses_department on public.courses (department_id);
 create index if not exists idx_papers_department on public.papers (department_id);
-create index if not exists idx_papers_course     on public.papers (course_id);
 create index if not exists idx_papers_exam_type  on public.papers (exam_type);
 create index if not exists idx_questions_paper   on public.questions (paper_id);
 create index if not exists idx_options_question  on public.options (question_id);

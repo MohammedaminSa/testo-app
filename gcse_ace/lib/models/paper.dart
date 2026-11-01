@@ -1,8 +1,6 @@
 class Paper {
   final String id;
   final String departmentId;
-  final String? courseId;
-  final String? courseName;
   final String examType; // 'mock' or 'exit_exam'
   final String title;
   final int year;
@@ -12,8 +10,6 @@ class Paper {
   const Paper({
     required this.id,
     required this.departmentId,
-    this.courseId,
-    this.courseName,
     this.examType = 'mock',
     required this.title,
     required this.year,
@@ -29,8 +25,6 @@ class Paper {
     return Paper(
       id: json['id'] as String,
       departmentId: json['department_id'] as String,
-      courseId: json['course_id'] as String?,
-      courseName: json['course_name'] as String?,
       examType: (json['exam_type'] as String?) ?? 'mock',
       title: json['title'] as String,
       year: json['year'] as int,

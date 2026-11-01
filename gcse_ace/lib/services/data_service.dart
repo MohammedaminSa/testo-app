@@ -56,15 +56,11 @@ class DataService {
 
   Future<List<Paper>> getPapers({
     String? departmentId,
-    String? courseId,
     String? examType,
   }) async {
     var query = _client.from('papers').select();
     if (departmentId != null) {
       query = query.eq('department_id', departmentId);
-    }
-    if (courseId != null) {
-      query = query.eq('course_id', courseId);
     }
     if (examType != null) {
       query = query.eq('exam_type', examType);
@@ -259,8 +255,6 @@ class DataService {
   // Paper management (Admin)
   Future<Paper> createPaper({
     required String departmentId,
-    String? courseId,
-    String? courseName,
     String examType = 'mock',
     required String title,
     required int year,
@@ -275,8 +269,6 @@ class DataService {
       'duration_minutes': durationMinutes,
       'total_marks': totalMarks,
     };
-    if (courseId != null) payload['course_id'] = courseId;
-    if (courseName != null) payload['course_name'] = courseName;
 
     final result = await _client
         .from('papers')

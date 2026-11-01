@@ -87,14 +87,6 @@ class PaperDetailScreen extends ConsumerWidget {
                             letterSpacing: 1.5,
                           ),
                         ),
-                        if (paper.courseName != null && paper.courseName!.isNotEmpty)
-                          Text(
-                            '•  ${paper.courseName}',
-                            style: theme.textTheme.labelSmall?.copyWith(
-                              color: Colors.white.withValues(alpha: 0.9),
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
                       ],
                     ),
                     const SizedBox(height: 10),

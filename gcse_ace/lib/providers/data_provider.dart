@@ -114,8 +114,6 @@ final createPaperProvider =
     FutureProvider.family<Paper, Map<String, dynamic>>((ref, data) async {
   return ref.read(dataServiceProvider).createPaper(
     departmentId: data['departmentId'] as String,
-    courseId: data['courseId'] as String?,
-    courseName: data['courseName'] as String?,
     examType: (data['examType'] as String?) ?? 'mock',
     title: data['title'] as String,
     year: data['year'] as int,

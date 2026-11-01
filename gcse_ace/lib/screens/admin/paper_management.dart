@@ -86,20 +86,6 @@ class PaperManagementScreen extends ConsumerWidget {
                                       ),
                                     ),
                                   ),
-                                  if (paper.courseName != null && paper.courseName!.isNotEmpty) ...[
-                                    const SizedBox(width: 8),
-                                    Flexible(
-                                      child: Text(
-                                        paper.courseName!,
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: Theme.of(context).colorScheme.primary,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                    ),
-                                  ],
                                 ],
                               ),
                               const SizedBox(height: 6),
