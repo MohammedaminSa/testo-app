@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/chat_message.dart';
 import '../services/ai_service.dart';
@@ -124,9 +125,25 @@ class ChatNotifier extends Notifier<ChatState> {
       );
     } catch (e) {
       debugPrint('Chat send failed: $e');
+      String errorMessage = 'Could not reach the AI tutor. Please try again.';
+      if (e is FunctionsHttpException) {
+        final details = e.details;
+        if (details is Map && details['error'] != null) {
+          errorMessage = details['error'].toString();
+        } else if (details != null) {
+          errorMessage = 'Server error (${e.status}): $details';
+        } else {
+          errorMessage = 'Server error (${e.status})';
+        }
+      } else {
+        final raw = e.toString().replaceFirst('Exception: ', '');
+        if (raw.isNotEmpty) {
+          errorMessage = raw;
+        }
+      }
       state = state.copyWith(
         isSending: false,
-        error: 'Could not reach the AI tutor. Please try again.',
+        error: errorMessage,
       );
     }
   }

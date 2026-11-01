@@ -3,11 +3,54 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 
-const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY') || ''
+const rawKey = Deno.env.get('GEMINI_API_KEY') || ''
+const GEMINI_API_KEY = rawKey.trim().replace(/^["']|["']$/g, '').trim()
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+let cachedModel: string | null = null
+
+async function getAvailableModel(apiKey: string): Promise<string> {
+  const envModel = Deno.env.get('GEMINI_MODEL')?.trim()
+  if (envModel) return envModel
+  if (cachedModel) return cachedModel
+
+  try {
+    const listRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`)
+    if (listRes.ok) {
+      const data = await listRes.json()
+      const models: Array<{ name: string; supportedGenerationMethods?: string[] }> = data.models || []
+      
+      const generateModels = models
+        .filter(m => m.supportedGenerationMethods?.includes('generateContent'))
+        .map(m => m.name.replace(/^models\//, ''))
+
+      // Prioritize flash models, then pro, then anything available
+      const preferred = 
+        generateModels.find(m => m.includes('2.5-flash')) ||
+        generateModels.find(m => m.includes('flash') && !m.includes('thinking') && !m.includes('8b')) ||
+        generateModels.find(m => m.includes('flash')) ||
+        generateModels.find(m => m.includes('pro')) ||
+        generateModels[0]
+
+      if (preferred) {
+        cachedModel = preferred
+        console.log(`Auto-detected available Gemini model: ${preferred}`)
+        return preferred
+      }
+    } else {
+      const listErr = await listRes.text()
+      console.warn(`ListModels returned status ${listRes.status}: ${listErr}`)
+    }
+  } catch (e) {
+    console.warn('Failed to list Gemini models:', e)
+  }
+
+  // Fallback default if listing is unavailable
+  return 'gemini-2.5-flash'
 }
 
 serve(async (req) => {
@@ -21,12 +64,11 @@ serve(async (req) => {
 
     if (!GEMINI_API_KEY) {
       return new Response(
-        JSON.stringify({ error: 'GEMINI_API_KEY not configured' }),
+        JSON.stringify({ error: 'GEMINI_API_KEY not configured in Supabase secrets' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
 
-    // System prompt for the AI tutor
     const systemPrompt = `You are a helpful and encouraging AI tutor for students. 
 Your role is to:
 - Explain concepts clearly and simply
@@ -51,9 +93,18 @@ Keep responses concise (under 200 words unless a detailed explanation is request
       }
     }
 
+    if (contents.length === 0) {
+      return new Response(
+        JSON.stringify({ reply: 'Hello! How can I help you with your studies today?' }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
+    const model = await getAvailableModel(GEMINI_API_KEY)
+
     // Call Gemini API
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`,
       {
         method: 'POST',
         headers: {
@@ -75,10 +126,14 @@ Keep responses concise (under 200 words unless a detailed explanation is request
     )
 
     if (!response.ok) {
-      const error = await response.text()
-      console.error('Gemini API error:', error)
+      cachedModel = null // invalidate cache on failure
+      const errorText = await response.text()
+      console.error(`Gemini API error with model ${model} (Status ${response.status}):`, errorText)
       return new Response(
-        JSON.stringify({ error: 'Failed to get AI response' }),
+        JSON.stringify({ 
+          error: `Gemini API Error (${model}): ${errorText}`,
+          status: response.status 
+        }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -93,7 +148,7 @@ Keep responses concise (under 200 words unless a detailed explanation is request
     )
 
   } catch (error) {
-    console.error('Error:', error)
+    console.error('Error in chat edge function:', error)
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

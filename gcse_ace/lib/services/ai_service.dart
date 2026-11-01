@@ -77,7 +77,8 @@ class AiService {
     );
 
     if (response.status != 200) {
-      throw Exception('Chat request failed: ${response.status}');
+      final details = response.data is Map ? (response.data['details'] ?? response.data['error']) : response.data;
+      throw Exception('Chat request failed (${response.status}): $details');
     }
 
     final data = response.data as Map<String, dynamic>;
