@@ -278,7 +278,7 @@ class _MaterialsList extends ConsumerWidget {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  Text(material.title, style: theme.textTheme.headlineSmall),
+                  Text(material.displayName, style: theme.textTheme.headlineSmall),
                 ],
               ),
             ),
@@ -449,7 +449,7 @@ class _MaterialTile extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      material.title,
+                      material.displayName,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.titleSmall,

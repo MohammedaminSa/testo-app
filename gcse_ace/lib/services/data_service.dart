@@ -42,16 +42,15 @@ class DataService {
   }
 
   Future<Course> getCourseById(String id) async {
-    final data = await _client
-        .from('courses')
-        .select()
-        .eq('id', id)
-        .single();
+    final data = await _client.from('courses').select().eq('id', id).single();
     return Course.fromJson(data);
   }
 
   Future<List<Course>> getAllCourses() async {
-    final data = await _client.from('courses').select().order('name', ascending: true);
+    final data = await _client
+        .from('courses')
+        .select()
+        .order('name', ascending: true);
     return (data as List).map((json) => Course.fromJson(json)).toList();
   }
 
@@ -75,16 +74,15 @@ class DataService {
   }
 
   Future<Paper> getPaperById(String id) async {
-    final data = await _client
-        .from('papers')
-        .select()
-        .eq('id', id)
-        .single();
+    final data = await _client.from('papers').select().eq('id', id).single();
     return Paper.fromJson(data);
   }
 
   Future<List<Paper>> getAllPapers() async {
-    final data = await _client.from('papers').select().order('year', ascending: false);
+    final data = await _client
+        .from('papers')
+        .select()
+        .order('year', ascending: false);
     return (data as List).map((json) => Paper.fromJson(json)).toList();
   }
 
@@ -98,11 +96,7 @@ class DataService {
   }
 
   Future<Question> getQuestionById(String id) async {
-    final data = await _client
-        .from('questions')
-        .select()
-        .eq('id', id)
-        .single();
+    final data = await _client.from('questions').select().eq('id', id).single();
     return Question.fromJson(data);
   }
 
@@ -175,16 +169,15 @@ class DataService {
   }
 
   Future<List<StudyMaterial>> getAllMaterials() async {
-    final data = await _client.from('materials').select().order('created_at', ascending: false);
+    final data = await _client
+        .from('materials')
+        .select()
+        .order('created_at', ascending: false);
     return (data as List).map((json) => StudyMaterial.fromJson(json)).toList();
   }
 
   Future<StudyMaterial> getMaterialById(String id) async {
-    final data = await _client
-        .from('materials')
-        .select()
-        .eq('id', id)
-        .single();
+    final data = await _client.from('materials').select().eq('id', id).single();
     return StudyMaterial.fromJson(data);
   }
 
@@ -205,17 +198,16 @@ class DataService {
   }) async {
     final result = await _client
         .from('departments')
-        .insert({
-          'name': name,
-          'slug': slug,
-          'description': description,
-        })
+        .insert({'name': name, 'slug': slug, 'description': description})
         .select()
         .single();
     return Department.fromJson(result);
   }
 
-  Future<Department> updateDepartment(String id, Map<String, dynamic> updates) async {
+  Future<Department> updateDepartment(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     final result = await _client
         .from('departments')
         .update(updates)
@@ -242,7 +234,8 @@ class DataService {
           'department_id': departmentId,
           'name': name,
           if (code != null && code.isNotEmpty) 'code': code,
-          if (description != null && description.isNotEmpty) 'description': description,
+          if (description != null && description.isNotEmpty)
+            'description': description,
         })
         .select()
         .single();
@@ -333,7 +326,10 @@ class DataService {
     return Question.fromJson(result);
   }
 
-  Future<Question> updateQuestion(String id, Map<String, dynamic> updates) async {
+  Future<Question> updateQuestion(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     final result = await _client
         .from('questions')
         .update(updates)
@@ -414,18 +410,23 @@ class DataService {
     final timestamp = DateTime.now().millisecondsSinceEpoch;
     final sanitized = fileName.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
     final filePath = 'materials/${timestamp}_$sanitized';
-    await _client.storage.from('materials').uploadBinary(
-      filePath,
-      bytes,
-      fileOptions: const FileOptions(
-        contentType: 'application/pdf',
-        upsert: true,
-      ),
-    );
+    await _client.storage
+        .from('materials')
+        .uploadBinary(
+          filePath,
+          bytes,
+          fileOptions: const FileOptions(
+            contentType: 'application/pdf',
+            upsert: true,
+          ),
+        );
     return _client.storage.from('materials').getPublicUrl(filePath);
   }
 
-  Future<StudyMaterial> updateMaterial(String id, Map<String, dynamic> updates) async {
+  Future<StudyMaterial> updateMaterial(
+    String id,
+    Map<String, dynamic> updates,
+  ) async {
     final result = await _client
         .from('materials')
         .update(updates)

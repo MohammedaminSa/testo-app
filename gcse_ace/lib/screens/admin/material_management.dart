@@ -62,15 +62,50 @@ class MaterialManagementScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                material.title,
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                              Row(
+                                children: [
+                                  if (material.isPdf) ...[
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                      decoration: BoxDecoration(
+                                        color: Colors.redAccent.withAlpha(25),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: const Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Icon(Icons.picture_as_pdf_rounded, size: 12, color: Colors.redAccent),
+                                          SizedBox(width: 4),
+                                          Text(
+                                            'PDF',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                              color: Colors.redAccent,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                  ],
+                                  Expanded(
+                                    child: Text(
+                                      material.displayName,
+                                      style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                '$deptName • ${material.url ?? 'No URL'}',
+                                material.courseName != null && material.courseName!.isNotEmpty
+                                    ? '$deptName • Course: ${material.courseName}'
+                                    : deptName,
                                 style: TextStyle(color: Colors.grey[600]),
-                                maxLines: 2,
+                                maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
                             ],
