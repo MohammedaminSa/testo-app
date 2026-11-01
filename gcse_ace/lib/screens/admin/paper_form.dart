@@ -23,7 +23,6 @@ class PaperFormScreen extends ConsumerStatefulWidget {
 
 class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _titleController = TextEditingController();
   final _yearController = TextEditingController();
   final _durationController = TextEditingController();
   final _marksController = TextEditingController();
@@ -39,15 +38,20 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
   @override
   void initState() {
     super.initState();
+    _yearController.addListener(_onYearChanged);
     _loadDepartments();
     if (widget.isEditing && widget.paperId != null) {
       _loadPaper();
     }
   }
 
+  void _onYearChanged() {
+    setState(() {});
+  }
+
   @override
   void dispose() {
-    _titleController.dispose();
+    _yearController.removeListener(_onYearChanged);
     _yearController.dispose();
     _durationController.dispose();
     _marksController.dispose();
@@ -88,7 +92,6 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
       final paper = await ref.read(dataServiceProvider).getPaperById(widget.paperId!);
       if (mounted) {
         setState(() {
-          _titleController.text = paper.title;
           _yearController.text = paper.year.toString();
           _durationController.text = paper.durationMinutes.toString();
           _marksController.text = paper.totalMarks.toString();
@@ -183,6 +186,18 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
     }
   }
 
+  String _computeTitle() {
+    final examTypeLabel = _selectedExamType == 'exit_exam' ? 'Exit Exam' : 'Mock Exam';
+    final subject = (_selectedCourseName != null && _selectedCourseName!.trim().isNotEmpty)
+        ? _selectedCourseName!.trim()
+        : (_departments.where((d) => d.id == _selectedDepartmentId).firstOrNull?.name ?? 'General');
+    final year = _yearController.text.trim();
+    if (year.isEmpty) {
+      return '$subject - $examTypeLabel';
+    }
+    return '$subject - $examTypeLabel $year';
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedDepartmentId == null) {
@@ -191,6 +206,7 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
       );
       return;
     }
+    final generatedTitle = _computeTitle();
     setState(() => _isLoading = true);
     try {
       if (widget.isEditing) {
@@ -199,7 +215,7 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
           'course_id': _selectedCourseId,
           'course_name': _selectedCourseName,
           'exam_type': _selectedExamType,
-          'title': _titleController.text,
+          'title': generatedTitle,
           'year': int.parse(_yearController.text),
           'duration_minutes': int.parse(_durationController.text),
           'total_marks': int.parse(_marksController.text),
@@ -212,7 +228,7 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
               courseId: _selectedCourseId,
               courseName: _selectedCourseName,
               examType: _selectedExamType,
-              title: _titleController.text,
+              title: generatedTitle,
               year: int.parse(_yearController.text),
               durationMinutes: int.parse(_durationController.text),
               totalMarks: int.parse(_marksController.text),
@@ -379,20 +395,6 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
                       ),
                       const SizedBox(height: 16),
 
-                      // Paper Title
-                      TextFormField(
-                        controller: _titleController,
-                        decoration: const InputDecoration(
-                          labelText: 'Paper Title',
-                          hintText: 'e.g., Computer Science Exit Exam 2024',
-                          prefixIcon: Icon(Icons.title_rounded),
-                        ),
-                        validator: (value) => value == null || value.isEmpty
-                            ? 'Enter title'
-                            : null,
-                      ),
-                      const SizedBox(height: 16),
-
                       // Year
                       TextFormField(
                         controller: _yearController,
@@ -410,6 +412,61 @@ class _PaperFormScreenState extends ConsumerState<PaperFormScreen> {
                           }
                           return null;
                         },
+                      ),
+                      const SizedBox(height: 16),
+
+                      // Auto-generated Title Preview
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).colorScheme.primary.withAlpha(25),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: Theme.of(context).colorScheme.primary.withAlpha(60),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Theme.of(context).colorScheme.primary.withAlpha(40),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.auto_awesome_rounded,
+                                size: 18,
+                                color: Theme.of(context).colorScheme.primary,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    'AUTO-GENERATED TITLE',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w700,
+                                      letterSpacing: 0.8,
+                                      color: Theme.of(context).colorScheme.primary,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    _computeTitle(),
+                                    style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                       const SizedBox(height: 16),
 
