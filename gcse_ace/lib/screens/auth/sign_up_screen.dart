@@ -14,6 +14,7 @@ class SignUpScreen extends StatefulWidget {
 
 class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _submitting = false;
@@ -22,6 +23,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
+    _usernameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
@@ -39,6 +41,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
       final response = await AuthService.instance.signUp(
         email: _emailController.text.trim(),
         password: _passwordController.text,
+        username: _usernameController.text.trim(),
       );
       if (!mounted) return;
       // Supabase may require email confirmation. If a session was returned the
@@ -72,6 +75,24 @@ class _SignUpScreenState extends State<SignUpScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              TextFormField(
+                controller: _usernameController,
+                keyboardType: TextInputType.text,
+                autofillHints: const [AutofillHints.username],
+                textInputAction: TextInputAction.next,
+                decoration: const InputDecoration(
+                  labelText: 'Username',
+                  hintText: 'e.g. alex24 or JohnDoe',
+                  prefixIcon: Icon(Icons.person_outline_rounded),
+                ),
+                validator: (value) {
+                  final username = value?.trim() ?? '';
+                  if (username.isEmpty) return 'Enter a username';
+                  if (username.length < 3) return 'At least 3 characters';
+                  return null;
+                },
+              ),
+              const SizedBox(height: 14),
               TextFormField(
                 controller: _emailController,
                 keyboardType: TextInputType.emailAddress,
