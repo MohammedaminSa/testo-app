@@ -11,7 +11,7 @@ import '../widgets/empty_state.dart';
 import '../widgets/glass_app_bar.dart';
 import '../widgets/glass_card.dart';
 
-class DepartmentPapersScreen extends ConsumerWidget {
+class DepartmentPapersScreen extends ConsumerStatefulWidget {
   const DepartmentPapersScreen({
     super.key,
     required this.departmentId,
@@ -22,10 +22,17 @@ class DepartmentPapersScreen extends ConsumerWidget {
   final Department? department;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DepartmentPapersScreen> createState() => _DepartmentPapersScreenState();
+}
+
+class _DepartmentPapersScreenState extends ConsumerState<DepartmentPapersScreen> {
+  String _filterType = 'all'; // 'all', 'mock', 'exit_exam'
+
+  @override
+  Widget build(BuildContext context) {
     final deptsAsync = ref.watch(departmentsProvider);
-    final resolvedDept = this.department ??
-        deptsAsync.value?.where((d) => d.id == departmentId).firstOrNull;
+    final resolvedDept = widget.department ??
+        deptsAsync.value?.where((d) => d.id == widget.departmentId).firstOrNull;
 
     if (resolvedDept == null) {
       return deptsAsync.when(
@@ -90,7 +97,7 @@ class DepartmentPapersScreen extends ConsumerWidget {
                       const SizedBox(height: 8),
                       Text(
                         department.description ??
-                            'Past papers and mock exams',
+                            'Past papers, mock exams and exit exams',
                         style: theme.textTheme.titleMedium?.copyWith(
                           color: Colors.white,
                           height: 1.35,
@@ -115,7 +122,7 @@ class DepartmentPapersScreen extends ConsumerWidget {
               ],
             ),
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
           papersAsync.when(
             loading: () => const Padding(
               padding: EdgeInsets.only(top: 60),
@@ -142,22 +149,125 @@ class DepartmentPapersScreen extends ConsumerWidget {
                   ),
                 );
               }
+
+              final mockCount = papers.where((p) => p.isMockExam).length;
+              final exitCount = papers.where((p) => p.isExitExam).length;
+
+              final filteredPapers = papers.where((p) {
+                if (_filterType == 'mock') return p.isMockExam;
+                if (_filterType == 'exit_exam') return p.isExitExam;
+                return true;
+              }).toList();
+
               return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  for (var i = 0; i < papers.length; i++)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 14),
-                      child: _PaperCard(
-                        paper: papers[i],
-                        accent: AppColors.accentFor(i),
-                        onTap: () => context.push('/paper/${papers[i].id}'),
-                      ),
+                  // Filter Chips
+                  SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      children: [
+                        _FilterPill(
+                          label: 'All (${papers.length})',
+                          selected: _filterType == 'all',
+                          onTap: () => setState(() => _filterType = 'all'),
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterPill(
+                          label: 'Mock Exams ($mockCount)',
+                          selected: _filterType == 'mock',
+                          onTap: () => setState(() => _filterType = 'mock'),
+                        ),
+                        const SizedBox(width: 8),
+                        _FilterPill(
+                          label: 'Exit Exams ($exitCount)',
+                          selected: _filterType == 'exit_exam',
+                          onTap: () => setState(() => _filterType = 'exit_exam'),
+                        ),
+                      ],
                     ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (filteredPapers.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 40),
+                      child: EmptyState(
+                        icon: Icons.filter_alt_off_rounded,
+                        title: 'No exams found',
+                        subtitle: 'No papers found in this category.',
+                        gradient: AppColors.sunset,
+                      ),
+                    )
+                  else
+                    for (var i = 0; i < filteredPapers.length; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 14),
+                        child: _PaperCard(
+                          paper: filteredPapers[i],
+                          accent: AppColors.accentFor(i),
+                          onTap: () => context.push('/paper/${filteredPapers[i].id}'),
+                        ),
+                      ),
                 ],
               );
             },
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _FilterPill extends StatelessWidget {
+  const _FilterPill({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(999),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: selected
+              ? AppColors.primary
+              : (isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white.withValues(alpha: 0.8)),
+          borderRadius: BorderRadius.circular(999),
+          border: Border.all(
+            color: selected
+                ? AppColors.primary
+                : (isDark ? Colors.white.withValues(alpha: 0.1) : const Color(0xFFE2E6F5)),
+          ),
+          boxShadow: selected
+              ? [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.3),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12.5,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color: selected ? Colors.white : theme.colorScheme.onSurface,
+          ),
+        ),
       ),
     );
   }
@@ -196,6 +306,56 @@ class _PaperCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: paper.isExitExam
+                            ? Colors.amber.withValues(alpha: 0.2)
+                            : AppColors.primary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            paper.isExitExam
+                                ? Icons.workspace_premium_rounded
+                                : Icons.quiz_outlined,
+                            size: 11,
+                            color: paper.isExitExam ? Colors.amber[800] : AppColors.primary,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            paper.examTypeDisplay.toUpperCase(),
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                              color: paper.isExitExam ? Colors.amber[800] : AppColors.primary,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (paper.courseName != null && paper.courseName!.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          paper.courseName!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w600,
+                            color: theme.colorScheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 6),
                 Text(paper.title, style: theme.textTheme.titleMedium),
                 const SizedBox(height: 10),
                 Wrap(
