@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../screens/admin/admin_home.dart';
+import '../screens/admin/course_management.dart';
 import '../screens/admin/department_form.dart';
 import '../screens/admin/department_management.dart';
 import '../screens/admin/material_form.dart';
@@ -113,6 +114,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           isEditing: true,
           departmentId: state.pathParameters['id'],
         ),
+      ),
+      GoRoute(
+        path: '/admin/courses',
+        builder: (context, state) => const CourseManagementScreen(),
       ),
       GoRoute(
         path: '/admin/papers',

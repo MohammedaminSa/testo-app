@@ -53,6 +53,35 @@ class AdminHomeScreen extends ConsumerWidget {
           GlassCard(
             padding: const EdgeInsets.all(20),
             radius: 20,
+            onTap: () => context.push('/admin/courses'),
+            child: Row(
+              children: [
+                const Icon(Icons.menu_book_rounded, size: 32, color: Colors.tealAccent),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Courses',
+                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Manage courses & modules under each department',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.arrow_forward_rounded, size: 24),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          GlassCard(
+            padding: const EdgeInsets.all(20),
+            radius: 20,
             onTap: () => context.push('/admin/papers'),
             child: Row(
               children: [
