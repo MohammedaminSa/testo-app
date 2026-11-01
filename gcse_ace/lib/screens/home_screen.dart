@@ -27,6 +27,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final user = ref.watch(authStateProvider).value;
+    final displayName = ref.watch(userDisplayNameProvider);
     final departmentsAsync = ref.watch(departmentsProvider);
     final attemptsAsync = user == null
         ? null
@@ -38,7 +39,11 @@ class HomeScreen extends ConsumerWidget {
         child: ListView(
           padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
           children: [
-            _Header(greeting: _greeting, email: user?.email),
+            _Header(
+              greeting: _greeting,
+              displayName: displayName,
+              email: user?.email,
+            ),
             const SizedBox(height: 22),
             _HeroCard(
               onStart: () =>
@@ -156,15 +161,22 @@ class HomeScreen extends ConsumerWidget {
 }
 
 class _Header extends StatelessWidget {
-  const _Header({required this.greeting, required this.email});
+  const _Header({
+    required this.greeting,
+    required this.displayName,
+    this.email,
+  });
 
   final String greeting;
+  final String displayName;
   final String? email;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final initial = (email ?? 'S').characters.first.toUpperCase();
+    final initial = displayName.trim().isNotEmpty
+        ? displayName.trim().characters.first.toUpperCase()
+        : 'S';
 
     return Row(
       children: [
@@ -199,7 +211,7 @@ class _Header extends StatelessWidget {
             children: [
               Text(greeting, style: theme.textTheme.bodyMedium),
               Text(
-                email ?? 'Student',
+                displayName,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.titleLarge,

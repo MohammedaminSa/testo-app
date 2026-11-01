@@ -33,6 +33,7 @@ class ProfileScreen extends ConsumerWidget {
       );
     }
 
+    final displayName = ref.watch(userDisplayNameProvider);
     final attemptsAsync = ref.watch(attemptsProvider(user.id));
 
     return AppScaffold(
@@ -40,7 +41,10 @@ class ProfileScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 28),
         children: [
-          _IdentityCard(email: user.email ?? 'Student'),
+          _IdentityCard(
+            displayName: displayName,
+            email: user.email ?? '',
+          ),
           const SizedBox(height: 20),
           attemptsAsync.when(
             loading: () => const _StatsSkeleton(),
@@ -105,14 +109,17 @@ class ProfileScreen extends ConsumerWidget {
 }
 
 class _IdentityCard extends StatelessWidget {
-  const _IdentityCard({required this.email});
+  const _IdentityCard({required this.displayName, required this.email});
 
+  final String displayName;
   final String email;
 
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final initial = email.characters.first.toUpperCase();
+    final initial = displayName.trim().isNotEmpty
+        ? displayName.trim().characters.first.toUpperCase()
+        : (email.isNotEmpty ? email.characters.first.toUpperCase() : 'S');
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -153,13 +160,25 @@ class _IdentityCard extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  email,
+                  displayName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: theme.textTheme.titleMedium?.copyWith(
                     color: Colors.white,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
+                if (email.isNotEmpty && email != displayName) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    email,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.white.withValues(alpha: 0.8),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(
