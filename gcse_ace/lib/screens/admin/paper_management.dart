@@ -62,6 +62,47 @@ class PaperManagementScreen extends ConsumerWidget {
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                    decoration: BoxDecoration(
+                                      color: paper.isExitExam
+                                          ? Colors.amber.withValues(alpha: 0.2)
+                                          : Colors.blueAccent.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                      border: Border.all(
+                                        color: paper.isExitExam ? Colors.amber : Colors.blueAccent,
+                                        width: 0.8,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      paper.examTypeDisplay.toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w800,
+                                        letterSpacing: 0.5,
+                                        color: paper.isExitExam ? Colors.amber[800] : Colors.blueAccent,
+                                      ),
+                                    ),
+                                  ),
+                                  if (paper.courseName != null && paper.courseName!.isNotEmpty) ...[
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        paper.courseName!,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: Theme.of(context).colorScheme.primary,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                              const SizedBox(height: 6),
                               Text(
                                 paper.title,
                                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
