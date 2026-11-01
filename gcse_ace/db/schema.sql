@@ -1,5 +1,5 @@
 -- SUPABASE schema for GCSE Ace.
--- Run once in the Supabase SQL editor.
+-- Run once in the Supabase SQL editor or via Supabase CLI migrations.
 -- Order matters: parents before children.
 
 -- =====================================================================
@@ -162,14 +162,17 @@ create table if not exists public.chat_messages (
 
 alter table public.chat_messages enable row level security;
 
+drop policy if exists "Users can view own chat messages" on public.chat_messages;
 create policy "Users can view own chat messages"
   on public.chat_messages for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own chat messages" on public.chat_messages;
 create policy "Users can insert own chat messages"
   on public.chat_messages for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can delete own chat messages" on public.chat_messages;
 create policy "Users can delete own chat messages"
   on public.chat_messages for delete
   using (auth.uid() = user_id);
@@ -186,7 +189,7 @@ stable
 security definer
 set search_path = public
 as $$
-  exists (
+  select exists (
     select 1 from public.profiles
     where id = auth.uid() and role = 'admin'
   );
@@ -195,14 +198,17 @@ $$;
 -- Profiles: users can read their own row; admins can read all
 alter table public.profiles enable row level security;
 
+drop policy if exists "Users can view own profile" on public.profiles;
 create policy "Users can view own profile"
   on public.profiles for select
   using (auth.uid() = id or public.is_admin());
 
+drop policy if exists "Users can insert own profile" on public.profiles;
 create policy "Users can insert own profile"
   on public.profiles for insert
   with check (auth.uid() = id);
 
+drop policy if exists "Users can update own profile" on public.profiles;
 create policy "Users can update own profile"
   on public.profiles for update
   using (auth.uid() = id)
@@ -215,22 +221,26 @@ create policy "Users can update own profile"
 -- Departments
 alter table public.departments enable row level security;
 
+drop policy if exists "Anyone can view departments" on public.departments;
 create policy "Anyone can view departments"
   on public.departments for select
   to authenticated
   using (true);
 
+drop policy if exists "Admins can insert departments" on public.departments;
 create policy "Admins can insert departments"
   on public.departments for insert
   to authenticated
   with check (public.is_admin());
 
+drop policy if exists "Admins can update departments" on public.departments;
 create policy "Admins can update departments"
   on public.departments for update
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Admins can delete departments" on public.departments;
 create policy "Admins can delete departments"
   on public.departments for delete
   to authenticated
@@ -239,22 +249,26 @@ create policy "Admins can delete departments"
 -- Courses
 alter table public.courses enable row level security;
 
+drop policy if exists "Anyone can view courses" on public.courses;
 create policy "Anyone can view courses"
   on public.courses for select
   to authenticated
   using (true);
 
+drop policy if exists "Admins can insert courses" on public.courses;
 create policy "Admins can insert courses"
   on public.courses for insert
   to authenticated
   with check (public.is_admin());
 
+drop policy if exists "Admins can update courses" on public.courses;
 create policy "Admins can update courses"
   on public.courses for update
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Admins can delete courses" on public.courses;
 create policy "Admins can delete courses"
   on public.courses for delete
   to authenticated
@@ -263,22 +277,26 @@ create policy "Admins can delete courses"
 -- Papers
 alter table public.papers enable row level security;
 
+drop policy if exists "Anyone can view papers" on public.papers;
 create policy "Anyone can view papers"
   on public.papers for select
   to authenticated
   using (true);
 
+drop policy if exists "Admins can insert papers" on public.papers;
 create policy "Admins can insert papers"
   on public.papers for insert
   to authenticated
   with check (public.is_admin());
 
+drop policy if exists "Admins can update papers" on public.papers;
 create policy "Admins can update papers"
   on public.papers for update
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Admins can delete papers" on public.papers;
 create policy "Admins can delete papers"
   on public.papers for delete
   to authenticated
@@ -287,22 +305,26 @@ create policy "Admins can delete papers"
 -- Questions
 alter table public.questions enable row level security;
 
+drop policy if exists "Anyone can view questions" on public.questions;
 create policy "Anyone can view questions"
   on public.questions for select
   to authenticated
   using (true);
 
+drop policy if exists "Admins can insert questions" on public.questions;
 create policy "Admins can insert questions"
   on public.questions for insert
   to authenticated
   with check (public.is_admin());
 
+drop policy if exists "Admins can update questions" on public.questions;
 create policy "Admins can update questions"
   on public.questions for update
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Admins can delete questions" on public.questions;
 create policy "Admins can delete questions"
   on public.questions for delete
   to authenticated
@@ -311,22 +333,26 @@ create policy "Admins can delete questions"
 -- Options
 alter table public.options enable row level security;
 
+drop policy if exists "Anyone can view options" on public.options;
 create policy "Anyone can view options"
   on public.options for select
   to authenticated
   using (true);
 
+drop policy if exists "Admins can insert options" on public.options;
 create policy "Admins can insert options"
   on public.options for insert
   to authenticated
   with check (public.is_admin());
 
+drop policy if exists "Admins can update options" on public.options;
 create policy "Admins can update options"
   on public.options for update
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Admins can delete options" on public.options;
 create policy "Admins can delete options"
   on public.options for delete
   to authenticated
@@ -335,22 +361,26 @@ create policy "Admins can delete options"
 -- Materials
 alter table public.materials enable row level security;
 
+drop policy if exists "Anyone can view materials" on public.materials;
 create policy "Anyone can view materials"
   on public.materials for select
   to authenticated
   using (true);
 
+drop policy if exists "Admins can insert materials" on public.materials;
 create policy "Admins can insert materials"
   on public.materials for insert
   to authenticated
   with check (public.is_admin());
 
+drop policy if exists "Admins can update materials" on public.materials;
 create policy "Admins can update materials"
   on public.materials for update
   to authenticated
   using (public.is_admin())
   with check (public.is_admin());
 
+drop policy if exists "Admins can delete materials" on public.materials;
 create policy "Admins can delete materials"
   on public.materials for delete
   to authenticated
@@ -359,14 +389,17 @@ create policy "Admins can delete materials"
 -- Attempts: students read/write their own rows
 alter table public.attempts enable row level security;
 
+drop policy if exists "Users can view own attempts" on public.attempts;
 create policy "Users can view own attempts"
   on public.attempts for select
   using (auth.uid() = user_id);
 
+drop policy if exists "Users can insert own attempts" on public.attempts;
 create policy "Users can insert own attempts"
   on public.attempts for insert
   with check (auth.uid() = user_id);
 
+drop policy if exists "Users can update own attempts" on public.attempts;
 create policy "Users can update own attempts"
   on public.attempts for update
   using (auth.uid() = user_id)
@@ -394,20 +427,24 @@ insert into storage.buckets (id, name, public)
 values ('materials', 'materials', true)
 on conflict (id) do nothing;
 
+drop policy if exists "Public view access for materials bucket" on storage.objects;
 create policy "Public view access for materials bucket"
   on storage.objects for select
   using (bucket_id = 'materials');
 
+drop policy if exists "Authenticated users can upload material pdfs" on storage.objects;
 create policy "Authenticated users can upload material pdfs"
   on storage.objects for insert
   to authenticated
   with check (bucket_id = 'materials');
 
+drop policy if exists "Authenticated users can update material pdfs" on storage.objects;
 create policy "Authenticated users can update material pdfs"
   on storage.objects for update
   to authenticated
   using (bucket_id = 'materials');
 
+drop policy if exists "Authenticated users can delete material pdfs" on storage.objects;
 create policy "Authenticated users can delete material pdfs"
   on storage.objects for delete
   to authenticated
