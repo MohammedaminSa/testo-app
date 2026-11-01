@@ -592,13 +592,17 @@ class _EditAccountSheetState extends ConsumerState<_EditAccountSheet> {
 
     try {
       await AuthService.instance.updateProfile(
-        username: newUsername != widget.currentUsername ? newUsername : null,
+        username: newUsername.isNotEmpty ? newUsername : null,
         password: newPassword.isNotEmpty ? newPassword : null,
       );
 
-      // Invalidate providers to immediately update UI everywhere
+      // Immediately reflect the updated username in UI
+      if (newUsername.isNotEmpty) {
+        ref.read(userDisplayNameProvider.notifier).updateName(newUsername);
+      }
+
+      // Refresh database profile cache
       ref.invalidate(userProfileProvider);
-      ref.invalidate(authStateProvider);
 
       if (mounted) {
         Navigator.of(context).pop();

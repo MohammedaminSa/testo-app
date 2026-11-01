@@ -133,30 +133,50 @@ class AuthService {
     if (user == null) throw Exception('No user logged in');
 
     final trimmedUsername = username?.trim();
+    final trimmedPassword = password?.trim();
 
-    // 1. Update username in metadata and public.profiles table
-    if (trimmedUsername != null && trimmedUsername.isNotEmpty) {
-      await _client.auth.updateUser(
-        UserAttributes(
-          data: {
+    final hasUsername = trimmedUsername != null && trimmedUsername.isNotEmpty;
+    final hasPassword = trimmedPassword != null && trimmedPassword.isNotEmpty;
+
+    if (!hasUsername && !hasPassword) return;
+
+    // 1. Update auth user attributes (metadata and/or password) in GoTrue
+    await _client.auth.updateUser(
+      UserAttributes(
+        password: hasPassword ? trimmedPassword : null,
+        data: hasUsername
+            ? {
+                'username': trimmedUsername,
+                'full_name': trimmedUsername,
+              }
+            : null,
+      ),
+    );
+
+    // 2. Synchronize username with public.profiles table
+    if (hasUsername) {
+      try {
+        final res = await _client.from('profiles').update({
+          'username': trimmedUsername,
+          'full_name': trimmedUsername,
+        }).eq('id', user.id).select();
+
+        if (res.isEmpty) {
+          await _client.from('profiles').insert({
+            'id': user.id,
             'username': trimmedUsername,
             'full_name': trimmedUsername,
-          },
-        ),
-      );
-
-      await _client.from('profiles').upsert({
-        'id': user.id,
-        'username': trimmedUsername,
-        'full_name': trimmedUsername,
-      });
-    }
-
-    // 2. Update password if provided
-    if (password != null && password.trim().isNotEmpty) {
-      await _client.auth.updateUser(
-        UserAttributes(password: password.trim()),
-      );
+            'role': 'student',
+          });
+        }
+      } catch (e) {
+        // Fallback for setups where profiles table doesn't have a username column
+        try {
+          await _client.from('profiles').update({
+            'full_name': trimmedUsername,
+          }).eq('id', user.id);
+        } catch (_) {}
+      }
     }
   }
 }
