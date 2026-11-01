@@ -254,10 +254,11 @@ class _StatsSection extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final count = attempts.length;
+    final completed = attempts.where((a) => a.isCompleted).toList();
+    final count = completed.length;
     final averagePercent = count == 0
         ? 0
-        : (attempts.fold<int>(0, (acc, a) => acc + a.percent) / count).round();
+        : (completed.fold<double>(0, (acc, a) => acc + a.percentage) / count).round();
 
     return Row(
       children: [
@@ -401,7 +402,7 @@ class _AttemptTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    attempt.paper?.title ?? 'Practice paper',
+                    attempt.paperTitle ?? 'Practice paper',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w600,
                     ),

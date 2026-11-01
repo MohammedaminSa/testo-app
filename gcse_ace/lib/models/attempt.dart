@@ -27,6 +27,8 @@ class Attempt {
 
   double get percentage => totalMarks > 0 && score != null ? (score! / totalMarks) * 100 : 0;
 
+  int get percent => percentage.round();
+
   factory Attempt.fromJson(Map<String, dynamic> json) {
     return Attempt(
       id: json['id'] as String,
