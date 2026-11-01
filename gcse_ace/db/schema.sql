@@ -7,10 +7,13 @@
 -- =====================================================================
 create table if not exists public.profiles (
   id          uuid primary key references auth.users (id) on delete cascade,
+  username    text,
   full_name   text not null,
   role        text not null default 'student',
   created_at  timestamptz not null default now()
 );
+
+alter table public.profiles add column if not exists username text;
 
 -- Auto-create a profile row when a new user signs up in auth.users
 create or replace function public.handle_new_user()
@@ -19,14 +22,23 @@ language plpgsql
 security definer
 set search_path = public
 as $$
+declare
+  raw_username text;
+  raw_fullname text;
 begin
-  insert into public.profiles (id, full_name, role)
+  raw_username := coalesce(new.raw_user_meta_data->>'username', split_part(new.email, '@', 1));
+  raw_fullname := coalesce(new.raw_user_meta_data->>'full_name', raw_username, 'Student');
+
+  insert into public.profiles (id, username, full_name, role)
   values (
     new.id,
-    coalesce(new.raw_user_meta_data->>'full_name', split_part(new.email, '@', 1), 'Student'),
+    raw_username,
+    raw_fullname,
     'student'
   )
-  on conflict (id) do nothing;
+  on conflict (id) do update set
+    username = excluded.username,
+    full_name = excluded.full_name;
   return new;
 end;
 $$;

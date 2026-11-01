@@ -19,6 +19,20 @@ class AuthService {
   /// The current user, or null when logged out.
   User? get currentUser => _client.auth.currentUser;
 
+  /// Returns the current user's display name or username.
+  String get currentDisplayName {
+    final user = currentUser;
+    if (user == null) return 'Student';
+    final metadata = user.userMetadata;
+    if (metadata != null) {
+      final username = metadata['username'] as String?;
+      if (username != null && username.trim().isNotEmpty) return username.trim();
+      final fullName = metadata['full_name'] as String?;
+      if (fullName != null && fullName.trim().isNotEmpty) return fullName.trim();
+    }
+    return user.email?.split('@').first ?? 'Student';
+  }
+
   /// Get the role of a user from the profiles table.
   ///
   /// Uses `.maybeSingle()` so a missing row does not throw an unhandled
@@ -35,12 +49,14 @@ class AuthService {
       if (data == null) {
         // Fallback: If trigger hasn't fired yet or wasn't set up, ensure profile exists
         final user = currentUser;
-        final name = (user?.userMetadata?['full_name'] as String?)?.trim();
+        final name = (user?.userMetadata?['username'] as String?)?.trim() ??
+            (user?.userMetadata?['full_name'] as String?)?.trim();
         final fallbackName = (name != null && name.isNotEmpty)
             ? name
             : (user?.email?.split('@').first ?? 'Student');
         await _client.from('profiles').upsert({
           'id': userId,
+          'username': fallbackName,
           'full_name': fallbackName,
           'role': 'student',
         });
@@ -68,24 +84,31 @@ class AuthService {
   Future<AuthResponse> signUp({
     required String email,
     required String password,
+    String? username,
     String? fullName,
   }) async {
+    final chosenName = (username != null && username.trim().isNotEmpty)
+        ? username.trim()
+        : (fullName != null && fullName.trim().isNotEmpty ? fullName.trim() : null);
+
     final response = await _client.auth.signUp(
       email: email,
       password: password,
-      data: fullName != null && fullName.isNotEmpty
-          ? {'full_name': fullName}
+      data: chosenName != null
+          ? {
+              'username': chosenName,
+              'full_name': chosenName,
+            }
           : null,
     );
 
     final user = response.user;
     if (user != null) {
       try {
-        final displayName = (fullName != null && fullName.isNotEmpty)
-            ? fullName
-            : email.split('@').first;
+        final displayName = chosenName ?? email.split('@').first;
         await _client.from('profiles').upsert({
           'id': user.id,
+          'username': displayName,
           'full_name': displayName,
           'role': 'student',
         });

@@ -20,3 +20,50 @@ final isAdminProvider = FutureProvider<bool>((ref) async {
   if (user == null) return false;
   return await AuthService.instance.isCurrentUserAdmin();
 });
+
+/// Fetches the profile record for the logged-in user.
+final userProfileProvider = FutureProvider<Map<String, dynamic>?>((ref) async {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return null;
+  try {
+    return await Supabase.instance.client
+        .from('profiles')
+        .select()
+        .eq('id', user.id)
+        .maybeSingle();
+  } catch (_) {
+    return null;
+  }
+});
+
+/// Reactive display name for the user (username, full_name, email prefix, or 'Student').
+final userDisplayNameProvider = Provider<String>((ref) {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return 'Student';
+
+  // 1. Check loaded profile row from public.profiles
+  final profile = ref.watch(userProfileProvider).value;
+  if (profile != null) {
+    final username = (profile['username'] as String?)?.trim();
+    if (username != null && username.isNotEmpty) return username;
+    final fullName = (profile['full_name'] as String?)?.trim();
+    if (fullName != null && fullName.isNotEmpty) return fullName;
+  }
+
+  // 2. Check auth user metadata
+  final metadata = user.userMetadata;
+  if (metadata != null) {
+    final username = (metadata['username'] as String?)?.trim();
+    if (username != null && username.isNotEmpty) return username;
+    final fullName = (metadata['full_name'] as String?)?.trim();
+    if (fullName != null && fullName.isNotEmpty) return fullName;
+  }
+
+  // 3. Fallback to email prefix (before '@')
+  final email = user.email;
+  if (email != null && email.contains('@')) {
+    return email.split('@').first;
+  }
+
+  return 'Student';
+});
