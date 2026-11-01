@@ -1,6 +1,7 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../models/attempt.dart';
+import '../models/course.dart';
 import '../models/department.dart';
 import '../models/material.dart';
 import '../models/paper.dart';
@@ -28,10 +29,44 @@ class DataService {
     return Department.fromJson(data);
   }
 
-  Future<List<Paper>> getPapers({String? departmentId}) async {
+  // Course queries
+  Future<List<Course>> getCourses({String? departmentId}) async {
+    var query = _client.from('courses').select();
+    if (departmentId != null) {
+      query = query.eq('department_id', departmentId);
+    }
+    final data = await query.order('name', ascending: true);
+    return (data as List).map((json) => Course.fromJson(json)).toList();
+  }
+
+  Future<Course> getCourseById(String id) async {
+    final data = await _client
+        .from('courses')
+        .select()
+        .eq('id', id)
+        .single();
+    return Course.fromJson(data);
+  }
+
+  Future<List<Course>> getAllCourses() async {
+    final data = await _client.from('courses').select().order('name', ascending: true);
+    return (data as List).map((json) => Course.fromJson(json)).toList();
+  }
+
+  Future<List<Paper>> getPapers({
+    String? departmentId,
+    String? courseId,
+    String? examType,
+  }) async {
     var query = _client.from('papers').select();
     if (departmentId != null) {
       query = query.eq('department_id', departmentId);
+    }
+    if (courseId != null) {
+      query = query.eq('course_id', courseId);
+    }
+    if (examType != null) {
+      query = query.eq('exam_type', examType);
     }
     final data = await query.order('year', ascending: false);
     return (data as List).map((json) => Paper.fromJson(json)).toList();
@@ -192,23 +227,65 @@ class DataService {
     await _client.from('departments').delete().eq('id', id);
   }
 
+  // Course management (Admin)
+  Future<Course> createCourse({
+    required String departmentId,
+    required String name,
+    String? code,
+    String? description,
+  }) async {
+    final result = await _client
+        .from('courses')
+        .insert({
+          'department_id': departmentId,
+          'name': name,
+          if (code != null && code.isNotEmpty) 'code': code,
+          if (description != null && description.isNotEmpty) 'description': description,
+        })
+        .select()
+        .single();
+    return Course.fromJson(result);
+  }
+
+  Future<Course> updateCourse(String id, Map<String, dynamic> updates) async {
+    final result = await _client
+        .from('courses')
+        .update(updates)
+        .eq('id', id)
+        .select()
+        .single();
+    return Course.fromJson(result);
+  }
+
+  Future<void> deleteCourse(String id) async {
+    await _client.from('courses').delete().eq('id', id);
+  }
+
   // Paper management (Admin)
   Future<Paper> createPaper({
     required String departmentId,
+    String? courseId,
+    String? courseName,
+    String examType = 'mock',
     required String title,
     required int year,
     required int durationMinutes,
     required int totalMarks,
   }) async {
+    final payload = <String, dynamic>{
+      'department_id': departmentId,
+      'exam_type': examType,
+      'title': title,
+      'year': year,
+      'duration_minutes': durationMinutes,
+      'total_marks': totalMarks,
+    };
+    if (courseId != null) payload['course_id'] = courseId;
+    if (courseName != null) payload['course_name'] = courseName;
+
     final result = await _client
         .from('papers')
-        .insert({
-          'department_id': departmentId,
-          'title': title,
-          'year': year,
-          'duration_minutes': durationMinutes,
-          'total_marks': totalMarks,
-        })
+        .insert(payload)
         .select()
         .single();
     return Paper.fromJson(result);

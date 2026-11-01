@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../models/attempt.dart';
+import '../models/course.dart';
 import '../models/department.dart';
 import '../models/material.dart';
 import '../models/paper.dart';
@@ -12,6 +13,15 @@ final dataServiceProvider = Provider<DataService>((ref) => DataService.instance)
 
 final departmentsProvider = FutureProvider<List<Department>>((ref) async {
   return ref.read(dataServiceProvider).getDepartments();
+});
+
+final coursesProvider =
+    FutureProvider.family<List<Course>, String?>((ref, departmentId) async {
+  return ref.read(dataServiceProvider).getCourses(departmentId: departmentId);
+});
+
+final coursesAllProvider = FutureProvider<List<Course>>((ref) async {
+  return ref.read(dataServiceProvider).getAllCourses();
 });
 
 final papersProvider =
@@ -75,11 +85,38 @@ final deleteDepartmentProvider =
   await ref.read(dataServiceProvider).deleteDepartment(id);
 });
 
+// Course admin providers
+final createCourseProvider =
+    FutureProvider.family<Course, Map<String, dynamic>>((ref, data) async {
+  return ref.read(dataServiceProvider).createCourse(
+    departmentId: data['departmentId'] as String,
+    name: data['name'] as String,
+    code: data['code'] as String?,
+    description: data['description'] as String?,
+  );
+});
+
+final updateCourseProvider =
+    FutureProvider.family<Course, Map<String, dynamic>>((ref, data) async {
+  final id = data['id'] as String;
+  final updates = Map<String, dynamic>.from(data);
+  updates.remove('id');
+  return ref.read(dataServiceProvider).updateCourse(id, updates);
+});
+
+final deleteCourseProvider =
+    FutureProvider.autoDispose.family<void, String>((ref, id) async {
+  await ref.read(dataServiceProvider).deleteCourse(id);
+});
+
 // Similar for papers
 final createPaperProvider =
     FutureProvider.family<Paper, Map<String, dynamic>>((ref, data) async {
   return ref.read(dataServiceProvider).createPaper(
     departmentId: data['departmentId'] as String,
+    courseId: data['courseId'] as String?,
+    courseName: data['courseName'] as String?,
+    examType: (data['examType'] as String?) ?? 'mock',
     title: data['title'] as String,
     year: data['year'] as int,
     durationMinutes: data['durationMinutes'] as int,
