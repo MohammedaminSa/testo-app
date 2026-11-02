@@ -1,11 +1,13 @@
 {
-    "name": "gcse_ace",
-    "short_name": "gcse_ace",
+    "name": "GCSE Ace",
+    "short_name": "GCSE Ace",
     "start_url": ".",
+    "id": "/",
+    "scope": "/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0B0F19",
+    "theme_color": "#4F46E5",
+    "description": "GCSE Exam Preparation, Practice Papers, and AI Tutor",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [
