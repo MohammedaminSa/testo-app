@@ -1,39 +1,66 @@
-# GCSE Ace 📚
+# GCSE Ace 🎓
 
-A comprehensive exam preparation and study platform built with Flutter and Supabase, featuring AI-powered tutoring, timed mock exams, and intelligent progress tracking.
+> A modern, AI-powered exam preparation and study platform built with Flutter and Supabase, featuring timed mock and exit exams, personalized AI tutoring, and intelligent progress tracking.
 
-![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter)
-![Dart](https://img.shields.io/badge/Dart-3.11.4-0175C2?logo=dart)
-![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?logo=supabase)
-![License](https://img.shields.io/badge/License-MIT-green)
+[![Flutter](https://img.shields.io/badge/Flutter-3.x-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
+[![Dart](https://img.shields.io/badge/Dart-3.x-0175C2?logo=dart&logoColor=white)](https://dart.dev)
+[![Supabase](https://img.shields.io/badge/Supabase-Backend-3ECF8E?logo=supabase&logoColor=white)](https://supabase.com)
+[![Google Gemini](https://img.shields.io/badge/AI-Google%20Gemini-8E75C2?logo=google&logoColor=white)](https://ai.google.dev)
+[![Platform](https://img.shields.io/badge/Platform-Android%20%7C%20Web%20%7C%20Desktop-4CAF50)](#-build-for-production)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 ---
 
-## 🎯 Overview
+## 🌟 Key Features
 
-GCSE Ace helps students prepare for exams through timed mock exams, AI-powered tutoring, and comprehensive progress tracking.
+- **📝 Timed Mock & Exit Exams**
+  - Department-wide exams covering multiple courses with realistic timers.
+  - Multiple-choice questions with instant client-side grading and detailed score badges.
 
-### Key Features
-- **📝 Timed Mock Exams** - Realistic exam conditions with instant grading
-- **🤖 AI Tutor** - Powered by Google Gemini for personalized explanations
-- **📊 Progress Tracking** - Detailed statistics and attempt history
-- **📖 Study Materials** - Organized content by subject
-- **👨‍💼 Admin Panel** - Complete content management system
+- **🤖 AI Tutor & Question Explainer**
+  - Interactive AI study companion powered by Google Gemini.
+  - Step-by-step conceptual breakdowns and personalized explanations for incorrect answers.
+
+- **📚 Course Study Materials & PDF Viewer**
+  - Curated reading notes organized by department and specific course modules.
+  - Direct computer PDF upload to Supabase storage with integrated in-app PDF launching.
+
+- **📊 Comprehensive Performance Tracking**
+  - Historical exam attempt logs, score averages, and percentage achievements.
+  - Student profile dashboard with customizable username and account credentials.
+
+- **👨‍💼 Unified Admin Management**
+  - Role-based access control (Admin / Student).
+  - Full management of Departments, Courses, Exam Papers, Questions, and Study Materials.
+
+---
+
+## 🛠️ Tech Stack
+
+| Layer | Technology |
+| :--- | :--- |
+| **Framework** | [Flutter](https://flutter.dev) (Dart 3) |
+| **State Management** | [Flutter Riverpod](https://riverpod.dev) |
+| **Routing** | [GoRouter](https://pub.dev/packages/go_router) |
+| **Backend & Database** | [Supabase](https://supabase.com) (PostgreSQL, Row-Level Security) |
+| **Authentication** | Supabase Auth (Email / Password + User Metadata) |
+| **Cloud Storage** | Supabase Storage (`materials` bucket for PDFs) |
+| **Edge Functions** | Supabase Deno Edge Functions |
+| **Artificial Intelligence** | Google Gemini API (`gemini-2.5-flash` with dynamic model discovery) |
 
 ---
 
 ## 🚀 Quick Start
 
 ### Prerequisites
-- Flutter SDK 3.x or higher
-- Dart 3.11.4 or higher
-- Supabase account
-- Google Gemini API key
+- [Flutter SDK](https://docs.flutter.dev/get-started/install) (version 3.19+)
+- A [Supabase](https://supabase.com) project
+- A [Google AI Studio](https://aistudio.google.com/) Gemini API Key
 
-### 1. Clone Repository
+### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/gcse_ace.git
-cd gcse_ace
+git clone https://github.com/MohammedaminSa/testo-app.git
+cd testo-app/gcse_ace
 ```
 
 ### 2. Install Dependencies
@@ -41,379 +68,76 @@ cd gcse_ace
 flutter pub get
 ```
 
-### 3. Run Locally
+### 3. Configure Supabase Credentials
+Verify your Supabase project credentials in `lib/config/supabase_config.dart`:
+```dart
+class SupabaseConfig {
+  static const supabaseUrl = 'https://YOUR_PROJECT_ID.supabase.co';
+  static const supabaseAnonKey = 'YOUR_ANON_PUBLIC_KEY';
+}
+```
+
+### 4. Run Locally
 ```bash
 flutter run
 ```
 
 ---
 
-## 🔧 Full Deployment Guide
+## 📦 Build for Production
 
-Follow these steps to deploy your app to production.
+### Android Release (APK)
+Generate a production release APK for direct installation on Android devices:
 
-### Part 1: Backend Setup (Supabase)
-
-#### Step 1: Create Supabase Project
-
-1. Go to https://supabase.com and sign up
-2. Click "New Project"
-3. Fill in:
-   - Project Name: `gcse-ace-prod`
-   - Database Password: (create strong password)
-   - Region: Choose closest to your users
-   - Pricing: Free tier
-4. Wait 2-3 minutes for setup
-5. Save your credentials from **Settings → API**:
-   - Project URL
-   - Anon/Public Key
-
-#### Step 2: Deploy Database Schema
-
-1. Open **SQL Editor** in Supabase Dashboard
-2. Click **"New Query"**
-3. Copy entire content from `db/schema.sql`
-4. Paste and click **"Run"**
-5. Verify tables created in **Table Editor**
-
-#### Step 3: Insert Sample Data
-
-Run these SQL queries in SQL Editor:
-
-**Departments:**
-```sql
-INSERT INTO departments (id, name, slug, description) VALUES
-  ('d1111111-1111-1111-1111-111111111111', 'Computer Science', 'computer-science', 'Algorithms, Data Structures, Theory of Computation'),
-  ('d2222222-2222-2222-2222-222222222222', 'Software Engineering', 'software-engineering', 'Software Design, Development, Testing'),
-  ('d3333333-3333-3333-3333-333333333333', 'Information Technology', 'information-technology', 'Networks, Database Systems'),
-  ('d4444444-4444-4444-4444-444444444444', 'Data Science', 'data-science', 'Machine Learning, Statistics'),
-  ('d5555555-5555-5555-5555-555555555555', 'Cybersecurity', 'cybersecurity', 'Network Security, Cryptography');
-```
-
-**Papers:**
-```sql
-INSERT INTO papers (id, department_id, title, year, duration_minutes, total_marks) VALUES
-  ('p1111111-1111-1111-1111-111111111111', 'd1111111-1111-1111-1111-111111111111', 'Data Structures & Algorithms - Midterm', 2024, 120, 100);
-```
-
-**Questions & Options:**
-```sql
-INSERT INTO questions (id, paper_id, order_number, text, marks, question_type, correct_answer, explanation) VALUES
-  ('q1111111-1111-1111-1111-111111111111', 'p1111111-1111-1111-1111-111111111111', 1, 'What is the time complexity of searching in a balanced BST?', 2, 'multiple-choice', 'B', 'Balanced BST search is O(log n)');
-
-INSERT INTO options (question_id, letter, text, is_correct) VALUES
-  ('q1111111-1111-1111-1111-111111111111', 'A', 'O(n)', false),
-  ('q1111111-1111-1111-1111-111111111111', 'B', 'O(log n)', true),
-  ('q1111111-1111-1111-1111-111111111111', 'C', 'O(1)', false),
-  ('q1111111-1111-1111-1111-111111111111', 'D', 'O(n²)', false);
-```
-
-**Study Materials:**
-```sql
-INSERT INTO materials (department_id, title, content) VALUES
-  ('d1111111-1111-1111-1111-111111111111', 'Data Structures Guide', 
-   'Arrays: O(1) access. Linked Lists: O(1) insert at head. Stacks: LIFO. Queues: FIFO. Trees: hierarchical. Hash Tables: O(1) average.');
-```
-
-#### Step 4: Update App Credentials
-
-Edit `lib/config/supabase_config.dart`:
-```dart
-class SupabaseConfig {
-  static const supabaseUrl = 'https://YOUR_PROJECT.supabase.co';
-  static const supabaseAnonKey = 'YOUR_ANON_KEY';
-}
-```
-
-#### Step 5: Setup AI Features
-
-1. **Get Gemini API Key**
-   - Go to https://ai.google.dev/
-   - Click "Get API Key"
-   - Create API key and copy it
-
-2. **Set Supabase Secret**
-   - Supabase Dashboard → Settings → Edge Functions
-   - Add secret: `GEMINI_API_KEY` = `your_api_key`
-
-3. **Install Supabase CLI**
-
-   **Windows (using Scoop):**
-   ```bash
-   # Install Scoop
-   Set-ExecutionPolicy RemoteSigned -Scope CurrentUser
-   irm get.scoop.sh | iex
-   
-   # Add Supabase bucket
-   scoop bucket add supabase https://github.com/supabase/scoop-bucket.git
-   
-   # Install CLI
-   scoop install supabase
-   ```
-
-4. **Deploy Edge Functions**
-   ```bash
-   # Login
-   supabase login
-   
-   # Link project
-   cd gcse_ace
-   supabase link --project-ref YOUR_PROJECT_REF
-   
-   # Deploy functions
-   supabase functions deploy chat
-   supabase functions deploy explain-question
-   ```
-
----
-
-### Part 2: Build & Distribute Android APK
-
-#### Step 1: Build Release APK
 ```bash
 cd gcse_ace
 flutter build apk --release
 ```
-The APK will be generated at:
-`build/app/outputs/flutter-apk/app-release.apk`
 
-#### Step 2: Install & Distribute
-- **Direct Install**: Transfer `app-release.apk` to any Android phone via USB, Google Drive, WhatsApp, or Telegram, then tap to install.
-- **GitHub Releases**: Go to your GitHub repository -> **Releases** -> **Draft a new release**, attach `app-release.apk`, and publish so users can download it with 1 click.
+The compiled standalone APK will be located at:
+```text
+build/app/outputs/flutter-apk/app-release.apk
+```
 
 ---
 
-### Part 3: Create Admin User
+## 🗄️ Database Setup
 
-1. Sign up through your deployed app
-2. Get your user ID from Supabase → Authentication
-3. Run in SQL Editor:
-   ```sql
-   UPDATE profiles SET role = 'admin' WHERE id = 'YOUR_USER_ID';
-   ```
-4. Refresh app and you'll see Admin tab
+The database schema, RLS policies, and triggers are defined in [`db/schema.sql`](gcse_ace/db/schema.sql).
+
+To deploy or inspect your schema:
+1. Open your project's **SQL Editor** in the [Supabase Dashboard](https://supabase.com/dashboard).
+2. Run the script in [`db/schema.sql`](gcse_ace/db/schema.sql) to set up all tables (`profiles`, `departments`, `courses`, `papers`, `questions`, `options`, `materials`, `attempts`, `chat_messages`), security policies, and storage buckets.
 
 ---
 
 ## 📁 Project Structure
 
+```text
+gcse_ace/
+├── assets/images/           # App icons and visual assets
+├── db/                      # PostgreSQL schema and migrations
+│   └── schema.sql
+├── lib/
+│   ├── config/              # Supabase and app configuration
+│   ├── models/              # Immutable data models (Paper, Course, Attempt, etc.)
+│   ├── providers/           # Riverpod state notifiers and providers
+│   ├── router/              # Declarative application routing (GoRouter)
+│   ├── screens/
+│   │   ├── admin/           # Course, Paper, and Material management screens
+│   │   ├── auth/            # Sign In, Sign Up, and Auth layout
+│   │   ├── chat_screen.dart # AI Tutor conversation screen
+│   │   ├── exam_screen.dart # Timed exam taking interface
+│   │   └── home_screen.dart # Student dashboard and department browse
+│   ├── services/            # Supabase and AI service integrations
+│   ├── theme/               # Colors, typography, and aurora gradients
+│   └── widgets/             # Reusable UI components (GlassCard, Buttons, etc.)
+└── supabase/
+    └── functions/           # Supabase Edge Functions (chat AI proxy)
 ```
-lib/
-├── config/          # App configuration
-├── models/          # Data models
-├── providers/       # State management
-├── router/          # Navigation
-├── screens/         # UI screens
-│   ├── admin/       # Admin panel
-│   └── auth/        # Authentication
-├── services/        # Business logic
-├── theme/           # Styling
-└── widgets/         # Reusable components
-
-supabase/
-└── functions/       # AI edge functions
-    ├── chat/
-    └── explain-question/
-
-db/
-└── schema.sql       # Database schema
-```
-
----
-
-## 🗄️ Database Schema
-
-**Core Tables:**
-- `profiles` - User profiles with roles
-- `departments` - Subject areas
-- `papers` - Exam papers
-- `questions` - Exam questions
-- `options` - Multiple choice options
-- `materials` - Study materials
-- `attempts` - Exam attempts
-- `chat_messages` - AI conversation history
-
-**Security:** Row Level Security (RLS) enabled on all tables with role-based access control.
-
----
-
-## 🔄 Update Process
-
-When you make changes:
-
-```bash
-# 1. Test locally
-flutter run -d chrome
-
-# 2. Build
-flutter build web --release
-
-# 3. Deploy
-firebase deploy --only hosting
-```
-
----
-
-## 🎨 Customization
-
-### Update App Name
-- `android/app/src/main/AndroidManifest.xml`
-- `ios/Runner/Info.plist`
-
-### Update Theme
-- `lib/theme/app_colors.dart`
-- `lib/theme/app_theme.dart`
-
-### Add Custom Domain (Optional)
-1. Firebase Console → Hosting → Add custom domain
-2. Follow DNS configuration steps
-3. Free SSL auto-provisioned
-
----
-
-## 🐛 Troubleshooting
-
-**"Failed to load data"**
-- Verify Supabase credentials in `supabase_config.dart`
-- Check Supabase project is not paused
-
-**"AI chat not working"**
-- Verify `GEMINI_API_KEY` set in Supabase secrets
-- Check edge functions deployed: Dashboard → Edge Functions
-
-**"Admin tab not visible"**
-- Ensure user role is `admin` in profiles table
-- Restart app after role change
-
-**"Build fails"**
-```bash
-flutter clean
-flutter pub get
-flutter build web --release
-```
-
-**"Deployed but showing old version"**
-- Clear browser cache or use incognito mode
-- Or redeploy: `firebase deploy --only hosting`
-
----
-
-## 📱 Build Mobile Apps
-
-### Android APK
-```bash
-flutter build apk --release
-# Output: build/app/outputs/flutter-apk/app-release.apk
-```
-
-### iOS (requires Mac)
-```bash
-flutter build ios --release
-flutter build ipa --release
-```
-
----
-
-## 🧪 Testing
-
-```bash
-# Run tests
-flutter test
-
-# Code analysis
-flutter analyze
-
-# Coverage
-flutter test --coverage
-```
-
----
-
-## 💰 Cost Breakdown
-
-**Supabase (Free Tier):**
-- 500MB database
-- 2GB bandwidth/month
-- 2GB file storage
-- Edge functions: 500K invocations
-
-**Firebase (Free Tier):**
-- 10GB storage
-- 360MB/day bandwidth
-- Custom domain with SSL
-
-**Google Gemini:**
-- 60 requests/minute free
-- Pay-as-you-go after
-
-**Total to Start:** $0/month
-
----
-
-## 📊 Monitoring
-
-**Supabase Dashboard:**
-- Database usage
-- Edge function logs
-- Authentication activity
-
-**Firebase Console:**
-- Hosting analytics
-- Traffic statistics
-- Performance monitoring
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/Feature`)
-3. Commit changes (`git commit -m 'Add Feature'`)
-4. Push to branch (`git push origin feature/Feature`)
-5. Open Pull Request
-
-**Standards:**
-- Follow Dart style guide
-- Run `flutter analyze` before committing
-- Write tests for new features
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License.
-
----
-
-## 🙏 Acknowledgments
-
-- Flutter team for the framework
-- Supabase for backend infrastructure
-- Google for Gemini API
-- Material Design for UI guidelines
-
----
-
-## 📞 Support
-
-- **Documentation:** Check this README
-- **Issues:** Open on GitHub
-- **Supabase Logs:** Dashboard → Edge Functions → Logs
-
----
-
-## 🗺️ Roadmap
-
-- [ ] Offline mode with caching
-- [ ] Push notifications
-- [ ] Leaderboards
-- [ ] Export results to PDF
-- [ ] Question bookmarking
-- [ ] Dark mode
-- [ ] Multi-language support
-- [ ] Advanced analytics
-
----
-
-**Built with ❤️ using Flutter and Supabase**
-
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
