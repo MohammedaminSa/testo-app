@@ -27,7 +27,6 @@ GCSE Ace helps students prepare for exams through timed mock exams, AI-powered t
 ### Prerequisites
 - Flutter SDK 3.x or higher
 - Dart 3.11.4 or higher
-- Google account (for Firebase)
 - Supabase account
 - Google Gemini API key
 
@@ -168,58 +167,19 @@ class SupabaseConfig {
 
 ---
 
-### Part 2: Deploy Web App (Firebase)
+### Part 2: Build & Distribute Android APK
 
-#### Step 1: Install Firebase CLI
-
+#### Step 1: Build Release APK
 ```bash
-# Install Node.js from https://nodejs.org/ first
-
-# Install Firebase CLI
-npm install -g firebase-tools
-```
-
-#### Step 2: Create Firebase Project
-
-1. Go to https://console.firebase.google.com/
-2. Click "Add project"
-3. Project name: `gcse-ace`
-4. Disable Google Analytics (optional)
-5. Click "Create project"
-
-#### Step 3: Initialize Firebase
-
-```bash
-# Login to Firebase
-firebase login
-
-# Navigate to project
 cd gcse_ace
-
-# Initialize hosting
-firebase init hosting
+flutter build apk --release
 ```
+The APK will be generated at:
+`build/app/outputs/flutter-apk/app-release.apk`
 
-**Prompts:**
-- Select project: `gcse-ace`
-- Public directory: `build/web`
-- Single-page app: `Yes`
-- GitHub deploys: `No`
-- Overwrite index.html: `No`
-
-#### Step 4: Build Flutter Web
-
-```bash
-flutter build web --release
-```
-
-#### Step 5: Deploy
-
-```bash
-firebase deploy --only hosting
-```
-
-Your app is now live at: `https://gcse-ace.web.app`
+#### Step 2: Install & Distribute
+- **Direct Install**: Transfer `app-release.apk` to any Android phone via USB, Google Drive, WhatsApp, or Telegram, then tap to install.
+- **GitHub Releases**: Go to your GitHub repository -> **Releases** -> **Draft a new release**, attach `app-release.apk`, and publish so users can download it with 1 click.
 
 ---
 
@@ -439,7 +399,6 @@ This project is licensed under the MIT License.
 - **Documentation:** Check this README
 - **Issues:** Open on GitHub
 - **Supabase Logs:** Dashboard → Edge Functions → Logs
-- **Firebase Logs:** Console → Hosting
 
 ---
 
@@ -458,4 +417,3 @@ This project is licensed under the MIT License.
 
 **Built with ❤️ using Flutter and Supabase**
 
-**Live Demo:** `https://your-project.web.app`
